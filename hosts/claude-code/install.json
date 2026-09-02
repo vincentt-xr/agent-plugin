@@ -1,0 +1,5 @@
+{
+  "host": "claude-code",
+  "installPaths": [".claude/skills/vincentt-recognition", ".claude/plugins/vincentt"],
+  "envVars": ["VINCENTT_AGENT_PLUGIN_HOME"]
+}

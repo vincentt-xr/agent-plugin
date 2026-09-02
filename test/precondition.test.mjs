@@ -93,14 +93,20 @@ test('QA-F14-G1 · the guard fires on EVERY declared install path, not just the 
 test('QA-F14-G1 · the guard fires on the wrappers\' env var', () => {
   const home = scratchHome();
   const envVar = MANIFEST.wrappers[0].envVars[0];
+  // Wrappers may SHARE an env var — they name one home for one package, not one per host — so
+  // the expected count is derived from the manifest rather than written as a literal. A literal
+  // here would turn "a second host was added" into a test failure, which is the drift the
+  // discovered-wrappers shape exists to avoid.
+  const expected = MANIFEST.wrappers.filter((w) => (w.envVars ?? []).includes(envVar)).length;
   try {
     const found = findInstalledCopies(MANIFEST, {
       home,
       env: { [envVar]: '/somewhere/agent-plugin' },
       moduleRoots: [],
     });
-    assert.equal(found.length, 1);
-    assert.equal(found[0].kind, 'env-var');
+    assert.equal(found.length, expected);
+    assert.ok(found.length > 0, 'setting a declared env var must be found');
+    for (const hit of found) assert.equal(hit.kind, 'env-var');
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
