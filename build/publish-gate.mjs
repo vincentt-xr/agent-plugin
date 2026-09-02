@@ -14,6 +14,9 @@
 //       not a gate; it is a promise with a network dependency.
 
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { renderGroundingSection, readSource, firstDifference, BEGIN_MARKER, END_MARKER } from './assemble.mjs';
 import { isMain } from './is-main.mjs';
 
@@ -83,35 +86,28 @@ export function evaluateGate({ fetched, error, expected, tag = TEMPLATE_TAG }) {
   };
 }
 
-// The fetch. `git archive --remote` reads the tag from the remote directly and never consults a
-// local branch, so property (1) is structural rather than a rule the caller has to remember.
+// The fetch — a shallow fetch of the TAG into a scratch git dir, then read the blob out of it.
+//
+// NOT `git archive --remote`: GitHub does not serve the upload-archive service over HTTPS and
+// answers 422, so that spelling refuses on every run. A gate that can only ever refuse is as
+// useless as one that can only ever proceed, and it fails in the direction that looks safe —
+// which is how it would have survived review. Verified against the real remote.
+//
+// `FETCH_HEAD` after fetching an explicit tag refspec is the tag's commit. No branch is ever
+// named, so property (1) — the assertion is against the tag, never main — stays structural.
 export function fetchTemplateAgents({ remote = TEMPLATE_REMOTE, tag = TEMPLATE_TAG } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'f14-gate-'));
   try {
-    const buf = execFileSync('git', ['archive', `--remote=${remote}`, tag, TEMPLATE_AGENTS_PATH], {
-      maxBuffer: 32 * 1024 * 1024,
-    });
-    return { fetched: extractFromTar(buf, TEMPLATE_AGENTS_PATH) };
+    const git = (args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    git(['init', '--quiet']);
+    git(['fetch', '--quiet', '--depth=1', remote, `refs/tags/${tag}`]);
+    const fetched = git(['show', `FETCH_HEAD:${TEMPLATE_AGENTS_PATH}`]);
+    return { fetched };
   } catch (err) {
-    return { error: err.message.split('\n')[0] };
+    return { error: String(err.message).split('\n')[0] };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
-}
-
-// A minimal tar reader for one known member. Adding a tar dependency to a release gate would
-// widen the gate's own supply chain for one file.
-export function extractFromTar(buffer, wantedName) {
-  let offset = 0;
-  while (offset + 512 <= buffer.length) {
-    const header = buffer.subarray(offset, offset + 512);
-    const name = header.subarray(0, 100).toString('utf8').replace(/\0.*$/, '');
-    if (!name) break;
-    const size = parseInt(header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim(), 8) || 0;
-    const start = offset + 512;
-    if (name === wantedName || name.endsWith(`/${wantedName}`)) {
-      return buffer.subarray(start, start + size).toString('utf8');
-    }
-    offset = start + Math.ceil(size / 512) * 512;
-  }
-  throw new Error(`${wantedName} not found in the fetched archive`);
 }
 
 if (isMain(import.meta.url)) {

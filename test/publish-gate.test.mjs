@@ -10,14 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  evaluateGate,
-  extractSection,
-  extractFromTar,
-  OUTCOME,
-  TEMPLATE_TAG,
-  TEMPLATE_AGENTS_PATH,
-} from '../build/publish-gate.mjs';
+import { evaluateGate, extractSection, OUTCOME, TEMPLATE_TAG } from '../build/publish-gate.mjs';
 import { renderGroundingSection, REPO_ROOT, BEGIN_MARKER, END_MARKER } from '../build/assemble.mjs';
 import { SHIPPED } from './hostile-sources.mjs';
 
@@ -107,12 +100,11 @@ test('QA-F14-G2(e) · the assertion is against the TAG, not the template\'s main
   const result = evaluateGate({ fetched: tagContent, expected: EXPECTED, tag: TEMPLATE_TAG });
   assert.equal(result.outcome, OUTCOME.REFUSE, 'a correct main must not satisfy the gate');
 
-  // And the fetch is structurally tag-only: `git archive --remote <tag>` reads the remote's tag
-  // and consults no local branch, so there is no code path by which main could be substituted.
+  // And the fetch is structurally tag-only: it resolves `refs/tags/<tag>` from the remote and
+  // reads FETCH_HEAD, so there is no code path by which main could be substituted.
   const gateSource = readFileSync(join(REPO_ROOT, 'build/publish-gate.mjs'), 'utf8');
-  assert.match(gateSource, /git archive/);
-  assert.match(gateSource, /--remote=/);
-  assert.doesNotMatch(gateSource, /rev-parse\s+main|origin\/main|HEAD/, 'the gate must never read a branch');
+  assert.match(gateSource, /refs\/tags\/\$\{tag\}/);
+  assert.doesNotMatch(gateSource, /origin\/main|rev-parse\s+main/, 'the gate must never read a branch');
 });
 
 test('QA-F14-G2 · every non-proceed outcome is a REFUSAL — there is no third state', () => {
@@ -132,32 +124,31 @@ test('QA-F14-G2 · every non-proceed outcome is a REFUSAL — there is no third 
   for (const c of cases.slice(1)) assert.equal(evaluateGate(c).outcome, OUTCOME.REFUSE);
 });
 
-test('the tar reader extracts the one member the gate asks for', () => {
-  const content = '# hello\n';
-  const tar = makeTar(`v2-template/${TEMPLATE_AGENTS_PATH}`, content);
-  assert.equal(extractFromTar(tar, TEMPLATE_AGENTS_PATH), content);
-  assert.throws(() => extractFromTar(tar, 'NOPE.md'), /not found/);
+test('the fetch names the TAG and never a branch', () => {
+  // Property (1) is structural: the fetch resolves `refs/tags/<tag>` and reads FETCH_HEAD, so
+  // there is no code path by which main could be substituted for the tag.
+  const source = readFileSync(join(REPO_ROOT, 'build/publish-gate.mjs'), 'utf8');
+  assert.match(source, /refs\/tags\/\$\{tag\}/);
+  assert.match(source, /FETCH_HEAD/);
+  assert.doesNotMatch(source, /origin\/main|rev-parse\s+main/, 'the gate must never read a branch');
+
+  // NOT `git archive --remote`: GitHub answers 422 for it over HTTPS (verified against the real
+  // remote), which would make the gate refuse on EVERY run — permanently unable to pass, and
+  // failing in the direction that looks safe, which is how it would survive review.
+  const code = source
+    .split('\n')
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join('\n');
+  assert.doesNotMatch(code, /archive/, 'archive --remote is unsupported by GitHub over HTTPS');
 });
 
-// A minimal ustar writer, so the reader is tested against a real archive layout rather than
-// against its own assumptions.
-function makeTar(name, content) {
-  const header = Buffer.alloc(512);
-  header.write(name, 0, 'utf8');
-  header.write('0000644\0', 100);
-  header.write('0000000\0', 108);
-  header.write('0000000\0', 116);
-  header.write(`${Buffer.byteLength(content).toString(8).padStart(11, '0')}\0`, 124);
-  header.write('00000000000\0', 136);
-  header.write('        ', 148);
-  header.write('0', 156);
-  header.write('ustar\0', 257);
-  header.write('00', 263);
-  let sum = 0;
-  for (const b of header) sum += b;
-  header.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
-
-  const body = Buffer.alloc(Math.ceil(Buffer.byteLength(content) / 512) * 512);
-  body.write(content, 0, 'utf8');
-  return Buffer.concat([header, body, Buffer.alloc(1024)]);
-}
+test('the fetch returns an ERROR rather than throwing, so the gate can refuse deliberately', async () => {
+  const { fetchTemplateAgents } = await import('../build/publish-gate.mjs');
+  const result = fetchTemplateAgents({
+    remote: 'https://github.com/vincentt-xr/does-not-exist-f14.git',
+    tag: 'latest',
+  });
+  assert.ok(result.error, 'an unreachable remote yields an error, not an exception');
+  assert.equal(result.fetched, undefined);
+  assert.equal(evaluateGate({ ...result, expected: EXPECTED }).outcome, OUTCOME.REFUSE);
+});
