@@ -46,6 +46,16 @@ laundering a teardown by pure inference, two pointing at stored credentials with
 path. Nothing greppable closes that. Five questions answered by someone who did not write the
 change is what stands there instead.
 
+Two things about answering it in practice, both learned by tripping over them:
+
+- **Do not number anything else in the PR body `**1.` or `**2.`.** The checker finds an item by
+  its heading and reads to the next one, so a summary numbered the same way captures the item's
+  segment and the answer below it is never seen. The item reads as unanswered while an answer is
+  plainly written. Use prose labels for any other list.
+- **Editing the body does not re-run the check.** The workflow triggers on `pull_request`
+  default types, which exclude `edited`, and a manual re-run replays the original payload with
+  the old body. Push a commit to have the answers read.
+
 ## Publishing
 
 The release job refuses to publish unless the current `v2-template@latest` already contains the
