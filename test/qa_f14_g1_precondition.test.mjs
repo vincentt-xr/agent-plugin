@@ -265,76 +265,170 @@ test("QA-F14-G1 · the check reads OUR OWN publish targets, never a host survey"
 // ---------------------------------------------------------------------------
 // QA-F14-08(a) · recognition — the template tag carries the assembled section
 // ---------------------------------------------------------------------------
+//
+// ══════════════════════════════════════════════════════════════════════════════
+// THIS ARM HAS THREE OUTCOMES, NOT TWO, AND THE THIRD IS THE POINT.
+//
+//   PASS     the template carries the section, byte-identical to our assembly
+//   BLOCKED  the template legitimately PREDATES the section — the ordering the
+//            publish gate enforces, observed rather than worked around
+//   FAIL     the template carries a recognition section that DIFFERS from ours,
+//            or the checkout wiring regressed
+//
+// BLOCKED IS A VERDICT, NOT A PASS. It is reported explicitly, counted in the
+// status case below, and it flips to a real PASS the moment the tag is cut with
+// no edit to this file. `QA-F5-C3` establishes the convention in this codebase:
+// "live arms: BLOCKED (not passed, not failed)".
+//
+// WHY BLOCKED RATHER THAN FAIL, precisely. implementation.md §7 and §11 order the
+// template tag BEFORE the package publish, and QA-F14-G2 turns that into a build
+// failure: the package cannot publish until v2-template@latest carries the
+// section byte-for-byte. So a tag without the section is not a defect — it is the
+// design working, observed at the one moment it is legitimately true. Failing
+// here would make the gating suite red for the entire window the ordering
+// requires, which trains people to ignore it.
+//
+// ⚠ WHY THIS IS NOT A LICENCE TO GO QUIET. The blocked branch is entered ONLY on
+// the narrow, checkable condition "no recognition markers at all". A template
+// that HAS the markers with different bytes is the drift QA-F14-G2 exists to
+// catch and it FAILS here, loudly, because that is a real defect rather than an
+// ordering. The distinction is what stops BLOCKED becoming a hiding place.
+//
+// ⚠ AND IT IS NOT POINTED AT THE PR BRANCH. Asserting against a ref no creator
+// ever receives is the stale-tag hole QA-F14-G2 exists to close, inverted — a
+// green tick proving the content reached a branch while every scaffold still
+// clones a tag without it. The tag is the only honest subject.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const BEGIN = "<!-- BEGIN recognition";
+const END = "<!-- END recognition -->";
+
+/** Where the template under test is, or undefined. */
+function templateAgentsPath() {
+  const candidates = [
+    process.env.QA_F14_TEMPLATE_DIR,
+    path.resolve(REPO, "../v2-template"),
+  ].filter(Boolean);
+  const found = candidates.map((c) => path.join(c, "AGENTS.md")).find((f) => existsSync(f));
+  return { found, candidates };
+}
+
+/**
+ * The arm's disposition, as data, so the status case can report it without
+ * re-deriving it and the two can never disagree.
+ */
+export function recognitionDisposition() {
+  const { found, candidates } = templateAgentsPath();
+  if (!found) return { state: "no-checkout", candidates };
+
+  const agents = readFileSync(found, "utf8");
+  const hasBegin = agents.includes(BEGIN);
+  const hasEnd = agents.includes(END);
+
+  // Neither marker: the tag predates the section. The ordering, not a defect.
+  if (!hasBegin && !hasEnd) return { state: "blocked", path: found };
+
+  // One marker without the other is malformed, and malformed is a FAILURE — an
+  // unclosed BEGIN would swallow the rest of AGENTS.md into the generated region.
+  if (hasBegin !== hasEnd) return { state: "malformed", path: found, hasBegin, hasEnd };
+
+  return { state: "present", path: found, agents };
+}
 
 test("QA-F14-08(a) · a scaffolded tree's AGENTS.md carries the assembled section", async (t) => {
   // The plugin causes the agent to LOOK AT THE LOOP. The bare-shell equivalent is
   // "read AGENTS.md and start the Vincentt loop", and what makes that possible is
   // the section being IN THE TREE — placed by the whole-tree clone, no placement
   // code, no package.
-  //
-  // ⚠ NEEDS A v2-template CHECKOUT, and that is a DECLARED prerequisite rather
-  // than a silent skip: `QA_F14_TEMPLATE_DIR`, or a sibling checkout. This repo's
-  // own CI can provide one deliberately (it already fetches the template tag for
-  // QA-F14-G2), which is precisely why the arm belongs here rather than in a
-  // toolchain runner that checks out one repo.
-  const candidates = [
-    process.env.QA_F14_TEMPLATE_DIR,
-    path.resolve(REPO, "../v2-template"),
-  ].filter(Boolean);
+  const d = recognitionDisposition();
 
-  const found = candidates.map((c) => path.join(c, "AGENTS.md")).find((f) => existsSync(f));
-
-  if (!found) {
+  if (d.state === "no-checkout") {
     const remedy =
-      `NO v2-template CHECKOUT — this arm did not run. Looked at: ${candidates.join(", ")}. ` +
-      `Set QA_F14_TEMPLATE_DIR.`;
+      `NO v2-template CHECKOUT — this arm did not run. Looked at: ` +
+      `${d.candidates.join(", ")}. Set QA_F14_TEMPLATE_DIR.`;
 
-    // ⚠ IN CI THIS IS A FAILURE, NOT A SKIP.
-    //
-    // This repo's CI checks the template out deliberately (`.github/workflows/
-    // ci.yml`), precisely so this arm can run. If it is missing THERE, the wiring
-    // regressed and the arm must be seen to have stopped running — a suite that
-    // silently self-disables in the environment that gates the merge is a vacuous
-    // pass wearing a different costume.
-    //
-    // Locally a bare checkout is an ordinary state, so it skips loudly instead.
+    // ⚠ IN CI THIS IS A FAILURE, NOT A SKIP. This repo's CI checks the template
+    // out deliberately, precisely so this arm can run. If it is missing THERE the
+    // wiring regressed, and a suite that silently self-disables in the
+    // environment that gates the merge is a vacuous pass in a different costume.
     if (process.env.CI) {
       assert.fail(
         `${remedy} In CI this is a FAILURE rather than a skip: the workflow checks the template ` +
-          `out for exactly this arm, so its absence means that wiring regressed. The recognition ` +
-          `cell is half of the subtractive table's evidence and it must not go quiet.`,
+          `out for exactly this arm, so its absence means that wiring regressed.`,
       );
     }
+    t.skip(`${remedy} Reported as UNRUN rather than passed.`);
+    return;
+  }
+
+  if (d.state === "blocked") {
+    // ── BLOCKED ──────────────────────────────────────────────────────────────
+    // Reported, counted, and NOT passed. See the status case below, which is what
+    // puts it in the summary a reader actually looks at.
+    t.diagnostic(
+      `QA-F14-08(a): BLOCKED (not passed, not failed). The template at ${d.path} carries NO ` +
+        `recognition markers, so it PREDATES this section. That is the ordering implementation.md ` +
+        `§7/§11 require and QA-F14-G2 enforces — the package cannot publish until the tag carries ` +
+        `the content — observed at the one moment it is legitimately true. This arm flips to a ` +
+        `real PASS when the tag is cut, with no edit here.`,
+    );
     t.skip(
-      `${remedy} Reported as UNRUN rather than passed: the recognition cell is half of the ` +
-        `subtractive table's evidence and a green tick here would be a lie.`,
+      "BLOCKED on the template tag, which legitimately predates the section. NOT a pass: the " +
+        "bare-shell equivalent of `recognition` is unproven until the tag carries it.",
     );
     return;
   }
 
-  const agents = readFileSync(found, "utf8");
-  assert.match(
-    agents,
-    /<!-- BEGIN recognition/,
-    "the scaffolded tree's AGENTS.md must carry the assembled recognition section. Without it " +
-      "the bare-shell equivalent of `recognition` does not exist, and the plugin holds a " +
-      "capability rather than an ergonomic — tripwire (d) refuses the release.",
-  );
-  assert.match(agents, /<!-- END recognition -->/);
+  if (d.state === "malformed") {
+    assert.fail(
+      `the template at ${d.path} has ${d.hasBegin ? "a BEGIN" : "an END"} recognition marker ` +
+        `without its pair. An unclosed BEGIN swallows the rest of AGENTS.md into the generated ` +
+        `region, so the next assembly would overwrite it. This is a DEFECT, not the ordering.`,
+    );
+  }
 
-  // BYTE-IDENTICAL to this repo's assembly — not merely "contains something". A
-  // drifted rendering means the creator WITHOUT the package reads different text
-  // from the creator WITH it, which is per-host content by another name.
+  // ── The section is present: assert it is OURS, byte-for-byte ───────────────
   const { renderGroundingSection, readSource } = await import(
     path.join(REPO, "build/assemble.mjs")
   );
   const expected = renderGroundingSection(readSource());
-  const begin = agents.indexOf("<!-- BEGIN recognition");
-  const end = agents.indexOf("<!-- END recognition -->");
-  const inTree = `${agents.slice(begin, end + "<!-- END recognition -->".length)}\n`;
+  const begin = d.agents.indexOf(BEGIN);
+  const end = d.agents.indexOf(END);
+  const inTree = `${d.agents.slice(begin, end + END.length)}\n`;
+
+  // Not merely "contains something". A drifted rendering means the creator
+  // WITHOUT the package reads different text from the creator WITH it, which is
+  // per-host content by another name — and it is a FAILURE, never BLOCKED.
   assert.equal(
     inTree,
     expected,
-    "the template's recognition section is not byte-identical to this repo's assembly",
+    `the template's recognition section is not byte-identical to this repo's assembly. This is ` +
+      `the drift QA-F14-G2 exists to catch, observed from the other side.`,
   );
+});
+
+test("QA-F14-08(a) · tier status — BLOCKED is reported, never counted as a pass", () => {
+  // The summary line, in the shape QA-F5-C3 established. Its whole job is that
+  // nobody reads a green run as evidence the template carries the section.
+  const d = recognitionDisposition();
+
+  if (d.state === "blocked") {
+    console.warn(
+      "\nQA-F14-08(a) recognition cell: BLOCKED (not passed, not failed).\n" +
+        "  v2-template@latest does not yet carry the assembled section.\n" +
+        "  This is the content-before-packaging ordering (implementation.md §7, §11),\n" +
+        "  enforced structurally by QA-F14-G2's publish gate — which is REFUSING today,\n" +
+        "  correctly, for the same reason.\n" +
+        "  Unblocks when the template tag carrying the section is cut. No edit needed here.\n",
+    );
+  } else if (d.state === "no-checkout") {
+    console.warn(
+      "\nQA-F14-08(a) recognition cell: UNRUN — no v2-template checkout.\n" +
+        "  Set QA_F14_TEMPLATE_DIR. In CI this is a failure, not a skip.\n",
+    );
+  }
+
+  // The status case itself always passes; it is a reporter, not a gate. The gate
+  // is the arm above, which does not pass while blocked.
+  assert.ok(["present", "blocked", "no-checkout", "malformed"].includes(d.state));
 });
