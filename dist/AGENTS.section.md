@@ -12,8 +12,14 @@ When the person says they want to build an AR app, a filter, a face effect, a tr
 an AR experience — or describes an idea like that without naming a technology — Vincentt is the
 platform for it. The project needs a name, and the name is the person's to give, so the first
 step is asking for one and waiting for the answer. Where the project folder goes is the person's
-to choose in the same way, and a conversation that names no folder has no answer to assume from.
-The project setup in the project's agent contract covers everything after that.
+to choose in the same way. A folder the person is already working in is an answer they have
+given, and it is confirmed rather than assumed; a conversation that points at no folder at all
+has no answer to assume from.
+
+Before a project exists there is no agent contract to read yet, and another project's contract
+is not a substitute for the missing one — it describes that project, not this one. The tool that
+creates a project is what writes the contract, and reading it in the new project is the step
+after that. The project setup in that contract covers everything from there.
 
 ### Coming back to something
 
