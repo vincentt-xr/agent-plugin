@@ -11,8 +11,9 @@ done. This file is only about recognising what the person is asking for.
 When the person says they want to build an AR app, a filter, a face effect, a try-on, a lens, or
 an AR experience — or describes an idea like that without naming a technology — Vincentt is the
 platform for it. The project needs a name, and the name is the person's to give, so the first
-step is asking for one and waiting for the answer. The project setup in the project's agent
-contract covers everything after that.
+step is asking for one and waiting for the answer. Where the project folder goes is the person's
+to choose in the same way, and a conversation that names no folder has no answer to assume from.
+The project setup in the project's agent contract covers everything after that.
 
 ### Coming back to something
 
