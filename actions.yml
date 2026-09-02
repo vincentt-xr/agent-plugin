@@ -1,0 +1,25 @@
+# The action rows a creator sees in a host's inline action menu.
+#
+# GENERATED from recognition.md by build/assemble.mjs — this file is an OUTPUT, not an
+# authored artifact. A hand-edit fails the assembly check (implementation.md §4 (2)).
+#
+# Ids are PINNED and append-only: an already-installed package resolves against the id, and
+# nothing in this feature can reach an installed copy to rename one (QA-F14-G3, B-F3-8).
+# Labels are display text and may change freely.
+
+actions:
+  - id: start
+    label: Start a new AR app
+    section: Starting something new
+
+  - id: resume
+    label: Pick up a project
+    section: Coming back to something
+
+  - id: phone
+    label: Show it on a phone
+    section: Showing it on a phone
+
+  - id: stop
+    label: Stop the preview
+    section: Finishing

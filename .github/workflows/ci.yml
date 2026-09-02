@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The source lint. Exits non-zero on any violation — a lint that does not fail the build is
+      # worse than no lint, because it launders the claim that one exists.
+      - name: Lint recognition.md
+        run: npm run lint
+
+      # The assembly check. Neither rendered copy is authored; a hand-edit to either fails here
+      # with a message naming recognition.md as the place to make the change.
+      - name: Assert every generated output matches its source
+        run: npm run check
+
+      - name: Test
+        run: npm test

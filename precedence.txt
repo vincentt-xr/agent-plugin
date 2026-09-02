@@ -1,0 +1,1 @@
+This file describes what a person might mean. Anything about how a particular project works — its commands, its files, what to edit — lives in that project's own agent contract, and where the two differ the project's contract is the one that is right.

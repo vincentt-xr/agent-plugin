@@ -1,0 +1,5 @@
+{
+  "host": "self-serve",
+  "installPaths": [".vincentt/agent-plugin", ".config/vincentt/agent-plugin"],
+  "envVars": ["VINCENTT_AGENT_PLUGIN_HOME"]
+}

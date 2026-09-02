@@ -1,0 +1,47 @@
+name: Release
+
+# The package's release path. Runs the same suite CI runs, then the publish gate.
+#
+# ⚠ THE PUBLISH STEP IS DELIBERATELY NOT WIRED YET. implementation.md §11 requires f13 to lock
+# its route before the package publishes, and agent-host-grounding's template tag to be cut. The
+# gate below is built, tested, and RUN; the step that would push the artifact is absent until
+# those land. A release job that published today would satisfy neither ordering rule.
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lint recognition.md
+        run: npm run lint
+
+      - name: Assert every generated output matches its source
+        run: npm run check
+
+      - name: Test
+        run: npm test
+
+      # THE ORDERING RULE, STRUCTURAL RATHER THAN PROMISED. The job refuses to publish if the
+      # current v2-template@latest does not contain the assembled section byte-for-byte. Content
+      # reaches creators who cannot install FIRST, always, because a package cannot publish until
+      # it has. This is FORK-5's "content before packaging" turned into a build failure.
+      #
+      # It reads the TAG, never main: a correct main behind a lagging tag must still refuse,
+      # because creators receive the tag. An unreachable tag also refuses — a gate whose failure
+      # mode on a fetch error is "proceed" is not a gate.
+      - name: Publish gate — v2-template@latest must already carry the section
+        run: npm run publish-gate
+
+      # - name: Publish
+      #   BLOCKED ON §11: f13's route must lock, and agent-host-grounding's template tag must be
+      #   cut, before this is wired. Left commented rather than removed so the ordering is visible
+      #   at the place it is enforced.

@@ -1,0 +1,19 @@
+{
+  "packageName": "@vincentt-xr/agent-plugin",
+  "generated": {
+    "by": "build/assemble.mjs",
+    "from": "hosts/*/install.json"
+  },
+  "wrappers": [
+    {
+      "host": "self-serve",
+      "installPaths": [
+        ".vincentt/agent-plugin",
+        ".config/vincentt/agent-plugin"
+      ],
+      "envVars": [
+        "VINCENTT_AGENT_PLUGIN_HOME"
+      ]
+    }
+  ]
+}
