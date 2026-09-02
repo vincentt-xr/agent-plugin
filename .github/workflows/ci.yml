@@ -24,7 +24,28 @@ jobs:
       - name: Assert every generated output matches its source
         run: npm run check
 
+      # QA-F14-08(a) — the recognition cell of the subtractive table — asserts that a scaffolded
+      # tree's AGENTS.md carries this repo's assembled section BYTE-FOR-BYTE. That needs the
+      # template, and without it the arm reports itself UNRUN rather than passing.
+      #
+      # It is fetched HERE rather than in `toolchain` deliberately. The arm is a fact about the
+      # template tag and this repo's assembly — the same repo pair QA-F14-G2 gates — so this is
+      # the tier that can feed it. A `toolchain` runner checks out `toolchain` alone.
+      #
+      # Depth 1, no history, read-only, no credential. `continue-on-error` is NOT set: if the
+      # checkout fails the arm must be seen to be unrun, not quietly skipped.
+      - name: Check out v2-template (for the recognition cell)
+        uses: actions/checkout@v4
+        with:
+          repository: vincentt-xr/v2-template
+          ref: latest
+          path: .v2-template
+          fetch-depth: 1
+
       - name: Test
+        env:
+          # Consumed by QA-F14-08(a). Absent, the arm reports UNRUN and names this variable.
+          QA_F14_TEMPLATE_DIR: ${{ github.workspace }}/.v2-template
         run: npm test
 
   # The adversarial review (implementation.md §4(4)) is the ONLY control that owns the lint's

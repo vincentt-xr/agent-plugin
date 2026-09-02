@@ -22,7 +22,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -279,52 +279,100 @@ test("QA-F14-G2 · the gate REFUSES AS A PROCESS, not merely as a function", { t
   // So this arm runs the real file as the release job runs it and asserts the
   // EXIT CODE rather than a return value.
   //
-  // ⚠ NO REMOTE OVERRIDE EXISTS, and that is stated rather than worked around.
-  // `publish-gate.mjs` hardcodes TEMPLATE_REMOTE and reads no env var, so this
-  // arm necessarily runs against the REAL remote. That is acceptable TODAY
-  // because the template tag does not yet carry the section, so the correct
-  // verdict is REFUSE either way — but it is a temporary alignment, not a
-  // property. Once the tag is cut this spawn will exit 0 legitimately and the
-  // assertion below would flip from "proves the gate refuses" to "proves
-  // nothing", silently.
-  //
-  // So the arm asserts the DEFINITENESS of the exit rather than one value, and
-  // pins the two legal outcomes to their two legal reasons. Re-pointing this at
-  // an injectable remote is a follow-up on the gate, filed in the report.
-  let status = 0;
-  let stdout = "";
-  let stderr = "";
+  // Driven against a FIXTURE REMOTE via `F14_TEMPLATE_REMOTE`, so the arm is
+  // deterministic and offline. Previously it necessarily hit the real remote and
+  // was only correct by coincidence — the tag does not yet carry the section, so
+  // REFUSE was right either way, and the arm would have flipped to proving
+  // nothing the moment the tag was cut. Dev made the target injectable; this uses
+  // it. BOTH verdicts are now exercised, which is what stops the arm asserting
+  // "it refuses" against a gate that can only ever refuse.
+  const tmp = mkdtempSync(path.join(os.tmpdir(), "f14-g2-spawn-"));
   try {
-    stdout = execFileSync(process.execPath, [path.join(REPO, "build/publish-gate.mjs")], {
-      cwd: REPO,
-      encoding: "utf8",
-      stdio: "pipe",
-      timeout: 45_000,
-    });
-  } catch (err) {
-    status = err.status ?? 1;
-    stderr = String(err.stderr ?? "");
-    stdout = String(err.stdout ?? "");
-  }
+    const remote = path.join(tmp, "tmpl");
+    mkdirSync(remote, { recursive: true });
+    const git = (...args) =>
+      execFileSync("git", ["-C", remote, ...args], { encoding: "utf8", stdio: "pipe" });
+    execFileSync("git", ["init", "-q", "-b", "main", remote], { stdio: "pipe" });
+    git("config", "user.email", "qa@example.test");
+    git("config", "user.name", "QA");
 
-  if (status === 0) {
-    // The only legitimate zero: the tag genuinely carries the section.
+    // ── The REFUSE spawn: a tag with no section ──────────────────────────────
+    writeFileSync(path.join(remote, "AGENTS.md"), "# A\n\nno section here\n");
+    git("add", "-A");
+    git("commit", "-q", "-m", "no section");
+    git("tag", "latest");
+
+    const refused = spawnGate(remote);
+    assert.notEqual(
+      refused.status,
+      0,
+      "the publish gate EXITED 0 against a template tag carrying NO recognition section. A " +
+        "release job reading that exit code would publish the package ahead of its content, " +
+        "which is exactly the ordering FORK-5 made structural.",
+    );
+    assert.match(refused.stderr, /REFUSED/i, "the refusal must be reported on stderr");
+
+    // ── The PROCEED spawn: the same gate, on a tag that DOES carry it ─────────
+    // Without this the arm would pass against a gate hard-wired to refuse.
+    writeFileSync(path.join(remote, "AGENTS.md"), `# A\n\n${EXPECTED}\n`);
+    git("add", "-A");
+    git("commit", "-q", "-m", "carries the section");
+    git("tag", "-f", "latest", "main");
+
+    const proceeded = spawnGate(remote);
+    assert.equal(
+      proceeded.status,
+      0,
+      `the gate must EXIT 0 when the tag carries the section: ${proceeded.stderr}`,
+    );
+    // ⚠ AND IT MUST SAY SO. A script whose entry-point guard did not fire also
+    // exits 0 — the `/var`→`/private/var` shape — and in CI that is
+    // indistinguishable from a gate that checked and approved.
     assert.match(
-      stdout,
+      proceeded.stdout,
       /gate passed/i,
-      "the gate EXITED 0 WITHOUT REPORTING A PASS. That is the `/var`→`/private/var` shape: a " +
-        "script whose entry-point guard did not fire exits 0 having done nothing, and in CI that " +
-        "is indistinguishable from a gate that checked and approved. A release job reading this " +
-        "exit code would publish the package ahead of its content.",
+      "the gate EXITED 0 WITHOUT REPORTING A PASS, which is what a gate that never ran looks like",
     );
-  } else {
+    // The override must announce itself, so an overridden run can never be
+    // mistaken for a check against the published artifact.
     assert.match(
-      stderr,
-      /REFUSED/i,
-      "a non-zero exit must be accompanied by the refusal on stderr, naming the tag it checked",
+      proceeded.stdout + proceeded.stderr,
+      /INJECTED/i,
+      "a run against an injected target must SAY SO, or a fixture pass reads as evidence about " +
+        "the published template tag",
     );
+    // And the announcement must not be mistakable for the verdict itself.
+    assert.match(
+      proceeded.stderr,
+      /says nothing about the published template tag/i,
+      "the injected-target notice must state what the result does NOT prove",
+    );
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+/**
+ * Spawn the real gate against a fixture remote. Returns its exit code and BOTH streams.
+ *
+ * `spawnSync` rather than `execFileSync`: on a ZERO exit `execFileSync` returns only
+ * stdout, so stderr is lost — and the gate's injected-target notice goes to stderr
+ * precisely so it cannot be confused with the verdict on stdout. Reading it back as
+ * `""` made the PROCEED arm assert against a stream it had discarded.
+ */
+function spawnGate(remote) {
+  const r = spawnSync(process.execPath, [path.join(REPO, "build/publish-gate.mjs")], {
+    cwd: REPO,
+    encoding: "utf8",
+    timeout: 45_000,
+    env: { ...process.env, F14_TEMPLATE_REMOTE: remote, F14_TEMPLATE_TAG: "latest" },
+  });
+  return {
+    status: r.status ?? 1,
+    stdout: String(r.stdout ?? ""),
+    stderr: String(r.stderr ?? ""),
+  };
+}
 
 test(
   "QA-F14-G2 · against the real v2-template@latest, the gate reaches a DEFINITE verdict",
