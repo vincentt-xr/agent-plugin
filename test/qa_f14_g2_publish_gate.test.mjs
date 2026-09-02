@@ -164,8 +164,33 @@ test("QA-F14-G2(e) · a correct `main` with a LAGGING tag still REFUSES", { time
         "carried the content, which is the exact ordering FORK-5 made structural.",
     );
 
+    // 3b. THE ADVERSARIAL VARIANT, and the reason this case is not merely a
+    //     re-statement of whatever the implementation happens to do.
+    //
+    //     A BRANCH is created with THE SAME NAME as the tag, pointing at the
+    //     CORRECT content. A fetch that resolves `<tag>` ambiguously — or that
+    //     prefers a head over a tag — would now silently read the branch and
+    //     PASS, while every creator still receives the stale tag. This is the
+    //     hole that would make the whole gate decorative, so it is probed rather
+    //     than assumed.
+    git("branch", "latest", "main");
+    const collided = fetchTemplateAgents({ remote, tag: "latest" });
+    assert.match(
+      collided.fetched ?? "",
+      /old, no section/i,
+      "a branch sharing the tag's name was resolved INSTEAD OF the tag. The fetch is ambiguous, " +
+        "so a stale tag can be masked by a correctly-named branch and the gate would pass while " +
+        "creators receive content that never shipped. The ref must be fully qualified " +
+        "(`refs/tags/<tag>`).",
+    );
+    assert.equal(
+      evaluateGate({ ...collided, expected: EXPECTED }).outcome,
+      OUTCOME.REFUSE,
+      "the gate must still refuse when a same-named branch carries the correct content",
+    );
+
     // 4. And the complement, so the case is not merely "it always refuses":
-    //    move the tag ONTO the correct commit and the gate proceeds.
+    //    move the TAG onto the correct commit and the gate proceeds.
     git("tag", "-f", "latest", "main");
     const ok = fetchTemplateAgents({ remote, tag: "latest" });
     const r2 = evaluateGate({ ...ok, expected: EXPECTED });
@@ -173,6 +198,18 @@ test("QA-F14-G2(e) · a correct `main` with a LAGGING tag still REFUSES", { time
       r2.outcome,
       OUTCOME.PROCEED,
       `the gate must PASS once the tag carries the section: ${r2.message}`,
+    );
+
+    // 5. An ANNOTATED tag (what a real release cuts) resolves to its commit's
+    //    tree, not to the tag object. `git show <tagobj>:<path>` would fail on a
+    //    tag object, so this arm proves the deref happens.
+    git("tag", "-f", "-a", "-m", "release", "latest", "main");
+    const annotated = fetchTemplateAgents({ remote, tag: "latest" });
+    assert.equal(
+      evaluateGate({ ...annotated, expected: EXPECTED }).outcome,
+      OUTCOME.PROCEED,
+      "an ANNOTATED tag must resolve to its commit's tree. Real releases cut annotated tags, so " +
+        "a gate that only handles lightweight ones refuses every real publish.",
     );
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -197,22 +234,97 @@ test("QA-F14-G2 · the fetch reads a TAG from a REMOTE, never a local checkout",
     .filter((l) => !/^\s*\/\//.test(l))
     .join("\n");
 
+  // ⚠ THE PROPERTY, NOT THE SPELLING. An earlier version of this assertion
+  // required `git archive --remote`, which pinned one MECHANISM. Dev replaced it
+  // with a shallow tag fetch for a real reason — GitHub does not serve
+  // `upload-archive` over HTTPS and answers 422, so the original spelling could
+  // only ever REFUSE, failing in the direction that looks safe. A test that
+  // pinned the spelling would have blocked a correct fix. What must hold is the
+  // property: an EXPLICIT TAG REF is fetched from a REMOTE, and no branch is ever
+  // named.
   assert.match(
     code,
-    /archive[\s\S]{0,120}--remote/,
-    "the gate must fetch with `git archive --remote=<remote> <tag>` — a fetch that consults a " +
-      "local checkout could be satisfied by an unreleased branch, which is arm (e)'s whole point",
+    /refs\/tags\/|--tags\b|\barchive\b[\s\S]{0,120}--remote/,
+    "the gate must resolve an EXPLICIT TAG REF from the remote. A fetch that could resolve a " +
+      "branch may be satisfied by unreleased content, which is arm (e)'s whole point.",
+  );
+  assert.match(
+    code,
+    /\bremote\b/,
+    "the gate must read from a remote rather than a local checkout",
   );
   assert.doesNotMatch(
     code,
-    /\brev-parse\s+(HEAD|main)\b|\bshow\s+main:/,
-    "the gate must not read a local branch",
+    /\brev-parse\s+(HEAD|main)\b|\bshow\s+main:|\borigin\/main\b|\bHEAD:/,
+    "the gate must never name a branch or HEAD — creators receive the TAG, and a gate satisfied " +
+      "by an unreleased branch protects nothing",
   );
 });
 
 // ---------------------------------------------------------------------------
 // The end-to-end arm against the REAL template — network, read-only
 // ---------------------------------------------------------------------------
+
+test("QA-F14-G2 · the gate REFUSES AS A PROCESS, not merely as a function", { timeout: 60_000 }, () => {
+  // ⚠ SPAWNED, and the reason is a real false-green found in this repo.
+  //
+  // `assemble.mjs`'s entry-point guard compared `import.meta.url` to
+  // `file://${process.argv[1]}`, which does not match on macOS when the path
+  // crosses the `/var`→`/private/var` symlink. Spawned from a temp copy the
+  // script EXITED 0 HAVING DONE NOTHING, and every in-process test stayed green
+  // because they called the exported function directly.
+  //
+  // The publish gate has the same shape and a worse failure mode: a gate that
+  // exits 0 without checking is indistinguishable in CI from a gate that passed.
+  // So this arm runs the real file as the release job runs it and asserts the
+  // EXIT CODE rather than a return value.
+  //
+  // ⚠ NO REMOTE OVERRIDE EXISTS, and that is stated rather than worked around.
+  // `publish-gate.mjs` hardcodes TEMPLATE_REMOTE and reads no env var, so this
+  // arm necessarily runs against the REAL remote. That is acceptable TODAY
+  // because the template tag does not yet carry the section, so the correct
+  // verdict is REFUSE either way — but it is a temporary alignment, not a
+  // property. Once the tag is cut this spawn will exit 0 legitimately and the
+  // assertion below would flip from "proves the gate refuses" to "proves
+  // nothing", silently.
+  //
+  // So the arm asserts the DEFINITENESS of the exit rather than one value, and
+  // pins the two legal outcomes to their two legal reasons. Re-pointing this at
+  // an injectable remote is a follow-up on the gate, filed in the report.
+  let status = 0;
+  let stdout = "";
+  let stderr = "";
+  try {
+    stdout = execFileSync(process.execPath, [path.join(REPO, "build/publish-gate.mjs")], {
+      cwd: REPO,
+      encoding: "utf8",
+      stdio: "pipe",
+      timeout: 45_000,
+    });
+  } catch (err) {
+    status = err.status ?? 1;
+    stderr = String(err.stderr ?? "");
+    stdout = String(err.stdout ?? "");
+  }
+
+  if (status === 0) {
+    // The only legitimate zero: the tag genuinely carries the section.
+    assert.match(
+      stdout,
+      /gate passed/i,
+      "the gate EXITED 0 WITHOUT REPORTING A PASS. That is the `/var`→`/private/var` shape: a " +
+        "script whose entry-point guard did not fire exits 0 having done nothing, and in CI that " +
+        "is indistinguishable from a gate that checked and approved. A release job reading this " +
+        "exit code would publish the package ahead of its content.",
+    );
+  } else {
+    assert.match(
+      stderr,
+      /REFUSED/i,
+      "a non-zero exit must be accompanied by the refusal on stderr, naming the tag it checked",
+    );
+  }
+});
 
 test(
   "QA-F14-G2 · against the real v2-template@latest, the gate reaches a DEFINITE verdict",
