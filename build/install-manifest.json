@@ -8,7 +8,7 @@
     {
       "host": "claude-code",
       "installPaths": [
-        ".claude/skills/vincentt-recognition",
+        ".claude/skills/vincentt-ar",
         ".claude/plugins/vincentt"
       ],
       "envVars": [

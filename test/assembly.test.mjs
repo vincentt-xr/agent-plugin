@@ -24,7 +24,10 @@ import {
   parseActions,
   listWrappers,
   PACKAGE_NAME,
+  renderClaudeCodeCommands,
+  renderClaudeCodePlugin,
 } from '../build/assemble.mjs';
+import { PINNED_ACTION_IDS, PINNED_PLUGIN_VERBS } from '../build/pins.mjs';
 import { firstParagraph } from '../build/parse.mjs';
 import { SHIPPED } from './hostile-sources.mjs';
 
@@ -254,6 +257,57 @@ test('§9.2 · the install manifest is discovered from the wrappers, not hand-li
   // A host added tomorrow extends the check with no edit to the test — the same drift argument as
   // the TABS allowlist. listWrappers reads the hosts directory rather than a literal.
   assert.deepEqual(listWrappers(), manifest.wrappers);
+});
+
+// —— the Claude Code commands are the SAME four actions ————————————————————————
+
+test('tripwire (b) · the commands are exactly the pinned action ids, no more', () => {
+  const commands = renderClaudeCodeCommands(SHIPPED);
+  // The set is PINNED_ACTION_IDS, so a fifth command cannot be added here without adding a fifth
+  // MOMENT to recognition.md — and that is a record change, not a packaging change. This is what
+  // stops the command list becoming an affordance Claude Code has and no other host does.
+  assert.equal(commands.length, PINNED_ACTION_IDS.length);
+  assert.deepEqual(commands.map((c) => c.name), ['start', 'resume', 'preview', 'stop']);
+});
+
+test('a command NAME may differ from its pinned id; the id is what is pinned', () => {
+  // `phone` is a fine id for the moment and a poor thing to type. The id stays append-only
+  // because an installed copy resolves against it; the name is display text like the label.
+  const commands = renderClaudeCodeCommands(SHIPPED);
+  assert.ok(PINNED_ACTION_IDS.includes('phone'), 'phone remains a pinned id');
+  assert.ok(!commands.some((c) => c.name === 'phone'), 'and is never what a person types');
+  assert.ok(commands.some((c) => c.name === 'preview'), 'preview is its display name');
+});
+
+test('every command names a real section and carries no behavior of its own', () => {
+  for (const command of renderClaudeCodeCommands(SHIPPED)) {
+    const heading = /asking about: \*\*(.+?)\*\*/.exec(command.content)?.[1];
+    assert.ok(heading, `${command.name} names the section it belongs to`);
+    assert.ok(
+      SHIPPED.includes(`### ${heading}`),
+      `${command.name} names "${heading}", which must be a real heading in recognition.md`,
+    );
+    // A command body is not a second place for behavior to live. It points at the skill and at
+    // the project's contract, and says nothing about what to run — no flag, no path, no verb
+    // beyond the one recognition.md itself is permitted.
+    assert.ok(!/--[a-z]/.test(command.content), `${command.name} names no flag`);
+    assert.ok(!/\.json|\.vincentt\//.test(command.content), `${command.name} names no path`);
+    const verbs = [...command.content.matchAll(/(?:^|[^A-Za-z])vincentt\s+([a-z][a-z-]*)/g)];
+    for (const [, verb] of verbs) {
+      assert.ok(PINNED_PLUGIN_VERBS.includes(verb), `${command.name} names unpinned verb ${verb}`);
+    }
+  }
+});
+
+test('§6 · the plugin manifest carries an author and the paragraph, both generated', () => {
+  const plugin = JSON.parse(renderClaudeCodePlugin(SHIPPED));
+  assert.equal(plugin.author.name, 'Vincentt');
+  // The panel shows the description as a BLOCK, so it gets the paragraph rather than the
+  // one-sentence match surface — and it is still generated, not authored.
+  assert.ok(plugin.description.startsWith('Vincentt is a platform for building AR apps'));
+  assert.ok(plugin.description.length > renderDescription(SHIPPED).length);
+  // The paragraph's last sentence is about the FILE, which is noise in a panel showing no file.
+  assert.ok(!/This file is only about/.test(plugin.description));
 });
 
 // —— actions.yml round-trips through the reader the lint uses ————————————————————

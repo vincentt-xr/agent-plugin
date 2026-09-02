@@ -1,5 +1,5 @@
 ---
-name: vincentt-recognition
+name: ar
 description: Vincentt is a platform for building AR apps that run in a phone's browser.
 ---
 
