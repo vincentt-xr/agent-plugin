@@ -32,6 +32,20 @@ npm test             # lint + assembly + labels + wrapper ceiling
 npm run check        # assemble --check: fail if any tracked output is stale
 ```
 
+## Changing `recognition.md`
+
+Two reviews run on every change to the source, and they ask different questions: the duplication
+review asks about **restatement**, the adversarial review asks about **override**. Both are in
+`.github/pull_request_template.md`, and CI fails a PR that touches `recognition.md` with any of
+the five adversarial items left blank. **A checklist answered by silence is not a control.**
+
+The reason it is enforced rather than suggested: **the lint filters syntax, and the residual is a
+class, not a list of shapes.** Any grammatically ordinary declarative sentence passes every arm.
+A build-time security pass wrote eleven hostile sentences and all eleven passed the lint — two
+laundering a teardown by pure inference, two pointing at stored credentials without naming a
+path. Nothing greppable closes that. Five questions answered by someone who did not write the
+change is what stands there instead.
+
 ## Publishing
 
 The release job refuses to publish unless the current `v2-template@latest` already contains the

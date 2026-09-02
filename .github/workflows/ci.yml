@@ -26,3 +26,39 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # The adversarial review (implementation.md §4(4)) is the ONLY control that owns the lint's
+  # residual, and that residual is a CLASS rather than a list of shapes: any grammatically
+  # ordinary declarative sentence passes every syntactic arm. A build-time security pass wrote
+  # eleven new hostile sentences and all eleven passed the shipped lint. No grep closes that; five
+  # questions answered by a second person is what stands there instead.
+  #
+  # "The reviewer answers each item explicitly in the PR - a checklist answered by silence is not
+  # a control." This job is what makes that sentence mechanical rather than aspirational.
+  #
+  # It runs ONLY when recognition.md is in the diff. A check that fires on every PR trains people
+  # to fill it in without reading it, which is the failure mode it exists to prevent.
+  adversarial-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Collect the changed files
+        run: |
+          git fetch --quiet origin "${{ github.base_ref }}"
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed-files.txt
+          cat /tmp/changed-files.txt
+
+      - name: Capture the PR description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$PR_BODY" > /tmp/pr-body.md
+
+      - name: Every item of the adversarial review is answered
+        run: node build/check-adversarial-review.mjs /tmp/changed-files.txt /tmp/pr-body.md
