@@ -1,0 +1,6 @@
+node_modules/
+
+# `dist/` is NOT ignored. It holds the assembled grounding section, which is a TRACKED output:
+# the assembly check compares it byte-for-byte and the publish gate compares the template tag
+# against it. An ignored copy could not be hand-edited, which sounds safe but means the check
+# guards nothing and the gate has no reference to compare with.

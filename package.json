@@ -1,0 +1,28 @@
+{
+  "name": "@vincentt-xr/agent-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Vincentt recognition mapping, and the wrappers that package it for agent hosts.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincentt-xr/agent-plugin.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "assemble": "node build/assemble.mjs",
+    "check": "node build/assemble.mjs --check",
+    "lint": "node build/lint.mjs",
+    "publish-gate": "node build/publish-gate.mjs",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "files": [
+    "recognition.md",
+    "precedence.txt",
+    "actions.yml",
+    "hosts/"
+  ]
+}
