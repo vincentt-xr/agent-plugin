@@ -184,11 +184,24 @@ test("QA-F14-G2 · the fetch reads a TAG from a REMOTE, never a local checkout",
   // consult a local branch, which is what makes (e) a property rather than a rule
   // the caller has to remember.
   const src = readFileSync(path.join(REPO, "build/publish-gate.mjs"), "utf8");
-  const code = src.replace(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm, "");
+  // Read the EXECUTABLE lines: drop whole-line `//` comments and nothing else.
+  //
+  // Two regexes were tried here and both were wrong in a way worth recording,
+  // because each failed for a reason unrelated to the subject — the QA-F3-G13
+  // shape. `//.*$` also eats the `//` inside `https://github.com/...`, deleting
+  // the very `--remote` this case looks for; and a `/\*[\s\S]*?\*\//` sweep
+  // matched across the file's URL-bearing lines and stripped it to nothing, so
+  // the assertion "failed" against an empty string. Line filtering is enough.
+  const code = src
+    .split("\n")
+    .filter((l) => !/^\s*\/\//.test(l))
+    .join("\n");
+
   assert.match(
     code,
-    /git["'\s,\]]*[\s\S]{0,80}archive[\s\S]{0,80}--remote/,
-    "the gate must fetch with `git archive --remote=<remote> <tag>`",
+    /archive[\s\S]{0,120}--remote/,
+    "the gate must fetch with `git archive --remote=<remote> <tag>` — a fetch that consults a " +
+      "local checkout could be satisfied by an unreleased branch, which is arm (e)'s whole point",
   );
   assert.doesNotMatch(
     code,
