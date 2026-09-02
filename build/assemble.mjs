@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRecognition, firstParagraph } from './parse.mjs';
+import { parseRecognition, firstParagraph, splitSentences } from './parse.mjs';
 import { isMain } from './is-main.mjs';
 import { PINNED_ACTION_IDS } from './pins.mjs';
 
@@ -157,6 +157,20 @@ export function renderDescription(source) {
   return (first ?? para).trim();
 }
 
+// The long form — the WHOLE first paragraph, for surfaces that show a plugin's description as a
+// block rather than a menu row. Still generated and still zero authored words: it is the same
+// paragraph, not truncated. A host that shows one line gets renderDescription; a host with room
+// for a paragraph gets the paragraph, and neither is a place to write new behavior.
+export function renderLongDescription(source) {
+  const para = firstParagraph(source);
+  // The paragraph's LAST sentence is about the file itself ("this file is only about recognising
+  // …") — orientation for an agent reading the source, and noise in a plugin panel that is not
+  // showing a file. Dropped by position rather than by matching its words, so rewording the
+  // source does not silently put it back.
+  const sentences = splitSentences(para);
+  return sentences.length > 1 ? sentences.slice(0, -1).join(' ') : para;
+}
+
 export function renderSelfServeManifest(source) {
   const manifest = {
     name: PACKAGE_NAME,
@@ -191,9 +205,34 @@ export function renderSelfServeManifest(source) {
 // two hosts drifting into two products. Nothing here detects a host: these are the paths WE
 // publish to, written unconditionally whether or not Claude Code exists on the machine.
 
-export const CLAUDE_CODE_SKILL_NAME = 'vincentt-recognition';
+// The skill name is the SECOND HALF of `plugin:skill` — the namespace already says `vincentt`,
+// so repeating it here reads as the product name twice. `ar` is what the skill is about.
+//
+// The INSTALL PATH in hosts/claude-code/install.json is qualified (`vincentt-ar`) and this is
+// not: inside the plugin the namespace disambiguates, but a bare `.claude/skills/ar` would make
+// the subtractive precondition fire on any unrelated skill someone happened to name `ar`.
+export const CLAUDE_CODE_SKILL_NAME = 'ar';
 export const CLAUDE_CODE_PLUGIN_NAME = 'vincentt';
 export const CLAUDE_CODE_DIR = 'dist/claude-code';
+
+// Who publishes this. A wrapper is permitted a name, a description, an install instruction, a
+// license and a docs link (§6); an author is the "name" field of a manifest, not a sentence about
+// the product, so it does not count against the non-generated ceiling.
+export const AUTHOR = Object.freeze({ name: 'Vincentt', url: HOMEPAGE });
+
+// The command NAME a person types, per pinned action id. The id is the pinned surface and is
+// append-only (an installed copy resolves against it); the name is display text, like the label,
+// and may change freely. They are separated here because `phone` is a fine id for the moment
+// "show it on a phone" and a poor thing to type — `/phone` reads as a verb for calling someone.
+//
+// `preview` is also the ONE verb recognition.md is permitted to name (PINNED_PLUGIN_VERBS), so
+// the command a person types and the word the source is allowed to use are the same word.
+const COMMAND_NAME_FOR_ID = Object.freeze({
+  start: 'start',
+  resume: 'resume',
+  phone: 'preview',
+  stop: 'stop',
+});
 
 // The frontmatter block. `name` is the skill's directory name because that is what the host
 // resolves against, and `description` is the generated sentence — the same string the self-serve
@@ -208,14 +247,54 @@ export function renderClaudeCodePlugin(source) {
   const plugin = {
     name: CLAUDE_CODE_PLUGIN_NAME,
     version: PACKAGE_VERSION,
-    description: renderDescription(source),
+    // The plugin panel shows this as a BLOCK, not a menu row, so it gets the whole paragraph.
+    // The one-sentence form is what a match surface wants; this is what a reader wants.
+    description: renderLongDescription(source),
+    author: AUTHOR,
     license: 'MIT',
     homepage: HOMEPAGE,
     repository: `${HOMEPAGE}.git`,
     generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
     skills: './skills/',
+    commands: './commands/',
   };
   return `${JSON.stringify(plugin, null, 2)}\n`;
+}
+
+// —— the commands ————————————————————————————————————————————————————————————
+
+// A host with an inline action menu renders `actions.yml`'s four rows. Claude Code has no such
+// menu; it has slash commands. These are THE SAME FOUR ACTIONS in the shape this host has, not a
+// fifth thing and not an affordance another host lacks — which is what keeps tripwire (b) intact.
+// The set is `PINNED_ACTION_IDS`, so a command cannot be added here without adding a moment to
+// recognition.md, and that is a record change.
+//
+// Each file is ONE generated line naming the section it belongs to. A command body is not a place
+// to explain what to do: the skill already carries recognition.md, and a second copy here would be
+// the duplication the whole generated-not-authored rule exists to prevent.
+export function renderClaudeCodeCommands(source) {
+  const doc = parseRecognition(source);
+  return PINNED_ACTION_IDS.map((id, i) => {
+    const section = doc.sections[i];
+    const front = [
+      '---',
+      `name: ${COMMAND_NAME_FOR_ID[id]}`,
+      `description: ${LABEL_FOR_ID[id]}`,
+      '---',
+      '',
+    ];
+    const body = [
+      `The person is asking about: **${section.heading}**.`,
+      '',
+      `Follow the \`${CLAUDE_CODE_SKILL_NAME}\` skill's "${section.heading}" section, then the`,
+      "project's own agent contract.",
+      '',
+    ];
+    return {
+      name: COMMAND_NAME_FOR_ID[id],
+      content: `${[...front, ...body].join('\n')}`,
+    };
+  });
 }
 
 // The marketplace entry. `source` points at the generated tree rather than the repo root, so the
@@ -223,7 +302,7 @@ export function renderClaudeCodePlugin(source) {
 export function renderClaudeCodeMarketplace(source) {
   const marketplace = {
     name: 'vincentt-xr',
-    owner: { name: 'Vincentt', url: HOMEPAGE },
+    owner: AUTHOR,
     metadata: {
       description: renderDescription(source),
       generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
@@ -232,7 +311,8 @@ export function renderClaudeCodeMarketplace(source) {
       {
         name: CLAUDE_CODE_PLUGIN_NAME,
         source: `./${CLAUDE_CODE_DIR}`,
-        description: renderDescription(source),
+        description: renderLongDescription(source),
+        author: AUTHOR,
         license: 'MIT',
         homepage: HOMEPAGE,
       },
@@ -299,6 +379,10 @@ const WRAPPER_OUTPUTS = Object.freeze({
       path: join(REPO_ROOT, CLAUDE_CODE_DIR, '.claude-plugin/plugin.json'),
       content: renderClaudeCodePlugin(source),
     },
+    ...renderClaudeCodeCommands(source).map((c) => ({
+      path: join(REPO_ROOT, CLAUDE_CODE_DIR, `commands/${c.name}.md`),
+      content: c.content,
+    })),
     {
       path: join(REPO_ROOT, '.claude-plugin/marketplace.json'),
       content: renderClaudeCodeMarketplace(source),
