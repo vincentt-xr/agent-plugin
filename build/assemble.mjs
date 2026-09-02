@@ -26,6 +26,11 @@ export const PRECEDENCE_PATH = join(REPO_ROOT, 'precedence.txt');
 // release metadata — it is a fact about what WE publish, never a probe of what is running.
 export const PACKAGE_NAME = '@vincentt-xr/agent-plugin';
 
+// Shared by every wrapper manifest. A per-wrapper literal is how two hosts end up published at
+// two versions from one commit, which is the drift the whole hosts/ shape exists to prevent.
+export const PACKAGE_VERSION = '0.1.0';
+export const HOMEPAGE = 'https://github.com/vincentt-xr/agent-plugin';
+
 // The ids are pinned; the SECTION each maps to and the LABEL each shows are read from
 // recognition.md's headings in order. A heading rename therefore moves the label and leaves the
 // id alone, which is exactly QA-F14-G3's rule expressed as code rather than as a promise.
@@ -155,10 +160,10 @@ export function renderDescription(source) {
 export function renderSelfServeManifest(source) {
   const manifest = {
     name: PACKAGE_NAME,
-    version: '0.1.0',
+    version: PACKAGE_VERSION,
     description: renderDescription(source),
     license: 'MIT',
-    homepage: 'https://github.com/vincentt-xr/agent-plugin',
+    homepage: HOMEPAGE,
     generated: {
       // Every field a host reads is generated. `source` names where a change is made, so a
       // reader who wants to edit the description learns the answer from the artifact itself.
@@ -171,6 +176,69 @@ export function renderSelfServeManifest(source) {
     },
   };
   return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
+// —— the Claude Code wrapper ——————————————————————————————————————————————————
+
+// Claude Code loads a plugin from a marketplace repo: a root `.claude-plugin/marketplace.json`
+// naming each plugin and where it lives, and a per-plugin `.claude-plugin/plugin.json` pointing
+// at a skills directory. Every file below is GENERATED, for the same reason the self-serve
+// manifest is: `description` is what the host matches a person's words against, and a
+// hand-written one is the closest thing in this feature to platform-authored behavior.
+//
+// This is a MANIFEST FORMAT, not a capability. The skill body is byte-identical to the
+// self-serve body — wrappers differ only in how a host is told to find it, which is what stops
+// two hosts drifting into two products. Nothing here detects a host: these are the paths WE
+// publish to, written unconditionally whether or not Claude Code exists on the machine.
+
+export const CLAUDE_CODE_SKILL_NAME = 'vincentt-recognition';
+export const CLAUDE_CODE_PLUGIN_NAME = 'vincentt';
+export const CLAUDE_CODE_DIR = 'dist/claude-code';
+
+// The frontmatter block. `name` is the skill's directory name because that is what the host
+// resolves against, and `description` is the generated sentence — the same string the self-serve
+// manifest carries, so the two wrappers cannot drift on the one field that has weight.
+export function renderClaudeCodeSkill(source, precedence) {
+  const description = renderDescription(source);
+  const front = ['---', `name: ${CLAUDE_CODE_SKILL_NAME}`, `description: ${description}`, '---', ''];
+  return `${front.join('\n')}\n${renderSkillBody(source, precedence)}`;
+}
+
+export function renderClaudeCodePlugin(source) {
+  const plugin = {
+    name: CLAUDE_CODE_PLUGIN_NAME,
+    version: PACKAGE_VERSION,
+    description: renderDescription(source),
+    license: 'MIT',
+    homepage: HOMEPAGE,
+    repository: `${HOMEPAGE}.git`,
+    generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
+    skills: './skills/',
+  };
+  return `${JSON.stringify(plugin, null, 2)}\n`;
+}
+
+// The marketplace entry. `source` points at the generated tree rather than the repo root, so the
+// thing a creator installs is an output and never the authored source beside it.
+export function renderClaudeCodeMarketplace(source) {
+  const marketplace = {
+    name: 'vincentt-xr',
+    owner: { name: 'Vincentt', url: HOMEPAGE },
+    metadata: {
+      description: renderDescription(source),
+      generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
+    },
+    plugins: [
+      {
+        name: CLAUDE_CODE_PLUGIN_NAME,
+        source: `./${CLAUDE_CODE_DIR}`,
+        description: renderDescription(source),
+        license: 'MIT',
+        homepage: HOMEPAGE,
+      },
+    ],
+  };
+  return `${JSON.stringify(marketplace, null, 2)}\n`;
 }
 
 // §9.2: the install manifest. The suite's precondition check is generated FROM THE WRAPPERS, so
@@ -213,13 +281,55 @@ export function listWrappers() {
 
 // —— outputs —————————————————————————————————————————————————————————————————
 
+// Each wrapper's outputs, keyed by host. A host is added by dropping in `hosts/<host>/` and
+// adding one entry here — the renderers differ because manifest FORMATS differ, which is the
+// only thing a wrapper is allowed to differ in. The skill body passed to each is the same
+// string, so no host can carry a sentence another host does not.
+const WRAPPER_OUTPUTS = Object.freeze({
+  'self-serve': (source, precedence) => [
+    { path: join(REPO_ROOT, 'hosts/self-serve/SKILL.md'), content: renderSkillBody(source, precedence) },
+    { path: join(REPO_ROOT, 'hosts/self-serve/manifest.json'), content: renderSelfServeManifest(source) },
+  ],
+  'claude-code': (source, precedence) => [
+    {
+      path: join(REPO_ROOT, CLAUDE_CODE_DIR, `skills/${CLAUDE_CODE_SKILL_NAME}/SKILL.md`),
+      content: renderClaudeCodeSkill(source, precedence),
+    },
+    {
+      path: join(REPO_ROOT, CLAUDE_CODE_DIR, '.claude-plugin/plugin.json'),
+      content: renderClaudeCodePlugin(source),
+    },
+    {
+      path: join(REPO_ROOT, '.claude-plugin/marketplace.json'),
+      content: renderClaudeCodeMarketplace(source),
+    },
+  ],
+});
+
 export function computeOutputs() {
   const source = readSource();
   const precedence = readFileSync(PRECEDENCE_PATH, 'utf8');
+
+  // Discovered, not listed: the same directory read the install manifest uses, so the outputs
+  // and the precondition check can never disagree about which hosts exist. A wrapper directory
+  // with no renderer is a build failure rather than a silently unrendered host — a host that
+  // ships an install.json and no skill body is exactly the empty-package failure readSource()
+  // refuses for the source.
+  const wrapperOutputs = listWrappers().flatMap(({ host }) => {
+    const render = WRAPPER_OUTPUTS[host];
+    if (!render) {
+      throw new Error(
+        `assembly failed: hosts/${host}/install.json declares a wrapper with no renderer in ` +
+          `build/assemble.mjs. A declared host that renders nothing would pass the precondition ` +
+          `check while publishing an empty wrapper.`,
+      );
+    }
+    return render(source, precedence);
+  });
+
   return [
     { path: join(REPO_ROOT, 'actions.yml'), content: renderActions(source) },
-    { path: join(REPO_ROOT, 'hosts/self-serve/SKILL.md'), content: renderSkillBody(source, precedence) },
-    { path: join(REPO_ROOT, 'hosts/self-serve/manifest.json'), content: renderSelfServeManifest(source) },
+    ...wrapperOutputs,
     { path: join(REPO_ROOT, 'build/install-manifest.json'), content: renderInstallManifest() },
     // The rendering this repo publishes into v2-template's AGENTS.md. It is TRACKED, not a build
     // artifact, so a hand-edit to it is detectable by the same check that guards the skill body —

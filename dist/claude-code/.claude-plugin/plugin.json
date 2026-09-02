@@ -1,0 +1,13 @@
+{
+  "name": "vincentt",
+  "version": "0.1.0",
+  "description": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+  "license": "MIT",
+  "homepage": "https://github.com/vincentt-xr/agent-plugin",
+  "repository": "https://github.com/vincentt-xr/agent-plugin.git",
+  "generated": {
+    "source": "recognition.md",
+    "by": "build/assemble.mjs"
+  },
+  "skills": "./skills/"
+}

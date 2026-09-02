@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { withScratchRepo } from './scratch.mjs';
@@ -229,11 +229,27 @@ test('§6 · every host-read manifest field is generated or a permitted wrapper 
 test('§9.2 · the install manifest is discovered from the wrappers, not hand-listed', () => {
   const manifest = JSON.parse(renderInstallManifest());
   assert.equal(manifest.packageName, PACKAGE_NAME);
-  assert.deepEqual(manifest.wrappers.map((w) => w.host), ['self-serve']);
 
-  const declared = JSON.parse(readFileSync(join(REPO_ROOT, 'hosts/self-serve/install.json'), 'utf8'));
-  assert.deepEqual(manifest.wrappers[0].installPaths, declared.installPaths);
-  assert.deepEqual(manifest.wrappers[0].envVars, declared.envVars);
+  // The expected host list is READ FROM THE DIRECTORY, not written here. A literal would make
+  // "a host was added" indistinguishable from "the manifest drifted" — and the literal that
+  // used to sit here contradicted this test's own comment, which is how the claim survived.
+  const onDisk = readdirSync(join(REPO_ROOT, 'hosts'), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .filter((name) => existsSync(join(REPO_ROOT, 'hosts', name, 'install.json')))
+    .sort();
+  assert.ok(onDisk.length > 0, 'there is at least one wrapper to discover');
+  assert.deepEqual(manifest.wrappers.map((w) => w.host), onDisk);
+
+  // EVERY wrapper round-trips, not just the first: the drift this guards against is a second
+  // host whose declared paths the manifest quietly dropped.
+  for (const wrapper of manifest.wrappers) {
+    const declared = JSON.parse(
+      readFileSync(join(REPO_ROOT, `hosts/${wrapper.host}/install.json`), 'utf8'),
+    );
+    assert.deepEqual(wrapper.installPaths, declared.installPaths, `${wrapper.host} installPaths`);
+    assert.deepEqual(wrapper.envVars, declared.envVars, `${wrapper.host} envVars`);
+  }
 
   // A host added tomorrow extends the check with no edit to the test — the same drift argument as
   // the TABS allowlist. listWrappers reads the hosts directory rather than a literal.

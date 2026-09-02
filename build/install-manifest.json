@@ -6,6 +6,16 @@
   },
   "wrappers": [
     {
+      "host": "claude-code",
+      "installPaths": [
+        ".claude/skills/vincentt-recognition",
+        ".claude/plugins/vincentt"
+      ],
+      "envVars": [
+        "VINCENTT_AGENT_PLUGIN_HOME"
+      ]
+    },
+    {
       "host": "self-serve",
       "installPaths": [
         ".vincentt/agent-plugin",

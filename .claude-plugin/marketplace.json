@@ -1,0 +1,23 @@
+{
+  "name": "vincentt-xr",
+  "owner": {
+    "name": "Vincentt",
+    "url": "https://github.com/vincentt-xr/agent-plugin"
+  },
+  "metadata": {
+    "description": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+    "generated": {
+      "source": "recognition.md",
+      "by": "build/assemble.mjs"
+    }
+  },
+  "plugins": [
+    {
+      "name": "vincentt",
+      "source": "./dist/claude-code",
+      "description": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+      "license": "MIT",
+      "homepage": "https://github.com/vincentt-xr/agent-plugin"
+    }
+  ]
+}
