@@ -392,6 +392,38 @@ export function renderChatgptPlugin(source) {
   return `${JSON.stringify(plugin, null, 2)}\n`;
 }
 
+// The marketplace entry, this host's format. A creator can add this repo as a marketplace
+// directly — from a GitHub shorthand, a git URL, or a local folder — which is how the wrapper is
+// installable BEFORE any directory submission is reviewed, and how it stays installable for
+// anyone who would rather not go through a directory at all.
+//
+// This host reads `.agents/plugins/marketplace.json`; it also accepts the Claude Code path as
+// legacy-compatible, but that one names `dist/claude-code`, whose commands belong to a host this
+// one is not. Two manifests, each naming its own build, is the same argument as two wrappers:
+// the FORMAT differs, the body does not.
+export function renderChatgptMarketplace(source) {
+  const marketplace = {
+    name: 'vincentt-xr',
+    interface: { displayName: 'Vincentt' },
+    metadata: {
+      description: renderDescription(source),
+      generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
+    },
+    plugins: [
+      {
+        name: CHATGPT_PLUGIN_NAME,
+        source: { source: 'local', path: `./${CHATGPT_DIR}` },
+        description: renderLongDescription(source),
+        author: AUTHOR,
+        license: 'MIT',
+        homepage: HOMEPAGE,
+        category: CHATGPT_CATEGORY,
+      },
+    ],
+  };
+  return `${JSON.stringify(marketplace, null, 2)}\n`;
+}
+
 // §9.2: the install manifest. The suite's precondition check is generated FROM THE WRAPPERS, so
 // a host added tomorrow extends the check with no edit — the same drift argument as the TABS
 // allowlist. It lists what WE publish and where WE install it. It names no host application,
@@ -467,6 +499,10 @@ const WRAPPER_OUTPUTS = Object.freeze({
     {
       path: join(REPO_ROOT, CHATGPT_DIR, '.codex-plugin/plugin.json'),
       content: renderChatgptPlugin(source),
+    },
+    {
+      path: join(REPO_ROOT, '.agents/plugins/marketplace.json'),
+      content: renderChatgptMarketplace(source),
     },
   ],
 });

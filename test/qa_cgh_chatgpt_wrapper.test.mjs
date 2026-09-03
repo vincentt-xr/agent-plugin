@@ -131,6 +131,28 @@ test('QA-CGH-03 · no starter prompt names a flag, a path, a URL, or an exit cod
   }
 });
 
+// —— QA-CGH-04 · each marketplace names its OWN build ————————————————————————
+
+test('QA-CGH-04 · the two marketplace manifests point at different builds', () => {
+  const chatgpt = JSON.parse(readFileSync(join(REPO_ROOT, '.agents/plugins/marketplace.json'), 'utf8'));
+  const claude = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
+
+  // This host accepts the Claude Code path as legacy-compatible, so a single manifest would
+  // resolve — and would serve dist/claude-code, whose commands belong to a host this one is not.
+  // The failure is silent: an install succeeds and the creator gets the wrong build.
+  assert.equal(chatgpt.plugins[0].source.path, './dist/chatgpt');
+  assert.equal(claude.plugins[0].source, './dist/claude-code');
+  assert.notEqual(chatgpt.plugins[0].source.path, claude.plugins[0].source);
+});
+
+test('QA-CGH-04 · the chatgpt marketplace description matches the wrapper it names', () => {
+  const source = readSource();
+  const marketplace = JSON.parse(readFileSync(join(REPO_ROOT, '.agents/plugins/marketplace.json'), 'utf8'));
+
+  assert.equal(marketplace.metadata.description, renderDescription(source));
+  assert.equal(marketplace.plugins[0].description, renderLongDescription(source));
+});
+
 test('QA-CGH-03 · the skill name is bare inside the plugin and qualified on disk', () => {
   const install = JSON.parse(readFileSync(join(REPO_ROOT, 'hosts/chatgpt/install.json'), 'utf8'));
 
