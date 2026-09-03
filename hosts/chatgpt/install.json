@@ -1,0 +1,5 @@
+{
+  "host": "chatgpt",
+  "installPaths": [".codex/skills/vincentt-ar", ".codex/plugins/vincentt"],
+  "envVars": ["VINCENTT_AGENT_PLUGIN_HOME"]
+}
