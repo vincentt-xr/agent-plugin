@@ -6,6 +6,16 @@
   },
   "wrappers": [
     {
+      "host": "chatgpt",
+      "installPaths": [
+        ".codex/skills/vincentt-ar",
+        ".codex/plugins/vincentt"
+      ],
+      "envVars": [
+        "VINCENTT_AGENT_PLUGIN_HOME"
+      ]
+    },
+    {
       "host": "claude-code",
       "installPaths": [
         ".claude/skills/vincentt-ar",

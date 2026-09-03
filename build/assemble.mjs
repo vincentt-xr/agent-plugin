@@ -321,6 +321,77 @@ export function renderClaudeCodeMarketplace(source) {
   return `${JSON.stringify(marketplace, null, 2)}\n`;
 }
 
+// —— the ChatGPT / Codex wrapper ——————————————————————————————————————————————
+
+// This host loads a plugin from a `.codex-plugin/plugin.json` naming a skills directory. Same
+// argument as the Claude Code wrapper: a MANIFEST FORMAT, not a capability. The skill body is
+// the same string, so this host carries no sentence another host lacks.
+//
+// The manifest names `skills` and NOTHING ELSE. There is no `mcpServers` and no `apps` key,
+// because there is nothing to connect to — no server, no OAuth application, no MCP endpoint, no
+// per-installation state (D-The-plugin-declares-no-connect-action). A listing here shows the
+// skills toggle and the starter prompts and stops, and the empty connect slot is the design
+// working rather than an omission.
+export const CHATGPT_SKILL_NAME = 'ar';
+export const CHATGPT_PLUGIN_NAME = 'vincentt';
+export const CHATGPT_DIR = 'dist/chatgpt';
+
+// The directory shows the plugin under a category. This is listing metadata pointing at a
+// classification the host defines, not a sentence about what the product does — the same class
+// of field as `license` and `homepage` (§6).
+export const CHATGPT_CATEGORY = 'Creativity';
+
+// §6: the starter prompts. This host renders a row a person CLICKS TO SPEAK, so the row has to
+// be a sentence in the person's own voice — which is a shape `actions.yml`'s labels deliberately
+// are not (a label is <= 5 words, names a moment, and may not contain a `vincentt` token).
+//
+// So the sentence is DERIVED FROM THE HEADING by a fixed expansion, never authored per host.
+// That is the whole of FORK-A: the alternative was a `prompt:` field per action, which would be
+// a fifth pinned string with no recall, written because one directory renders one field. A stiff
+// sentence costs stiffness; an authored one costs a string we cannot reach to change.
+//
+// The mapping is keyed by PINNED_ACTION_ID, so a prompt cannot exist for a moment recognition.md
+// does not have, and a fifth moment is a record change before it is ever a fifth row here.
+const STARTER_PROMPT_FOR_ID = Object.freeze({
+  start: 'Help me start a new AR app.',
+  resume: 'Help me pick up a project I started.',
+  phone: 'Show me what I am building on my phone.',
+  stop: 'Stop the preview I have running.',
+});
+
+export function renderChatgptSkill(source, precedence) {
+  const description = renderDescription(source);
+  const front = ['---', `name: ${CHATGPT_SKILL_NAME}`, `description: ${description}`, '---', ''];
+  return `${front.join('\n')}\n${renderSkillBody(source, precedence)}`;
+}
+
+export function renderChatgptPlugin(source) {
+  const plugin = {
+    name: CHATGPT_PLUGIN_NAME,
+    version: PACKAGE_VERSION,
+    description: renderDescription(source),
+    author: AUTHOR,
+    license: 'MIT',
+    homepage: HOMEPAGE,
+    repository: `${HOMEPAGE}.git`,
+    generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
+    // The one component reference. No `mcpServers`, no `apps` — see above.
+    skills: './skills/',
+    interface: {
+      displayName: 'Vincentt',
+      shortDescription: renderDescription(source),
+      // The listing shows this as a BLOCK, so it gets the whole paragraph — the same split the
+      // Claude Code plugin panel gets, and for the same reason.
+      longDescription: renderLongDescription(source),
+      developerName: AUTHOR.name,
+      category: CHATGPT_CATEGORY,
+      websiteURL: HOMEPAGE,
+      defaultPrompt: PINNED_ACTION_IDS.map((id) => STARTER_PROMPT_FOR_ID[id]),
+    },
+  };
+  return `${JSON.stringify(plugin, null, 2)}\n`;
+}
+
 // §9.2: the install manifest. The suite's precondition check is generated FROM THE WRAPPERS, so
 // a host added tomorrow extends the check with no edit — the same drift argument as the TABS
 // allowlist. It lists what WE publish and where WE install it. It names no host application,
@@ -386,6 +457,16 @@ const WRAPPER_OUTPUTS = Object.freeze({
     {
       path: join(REPO_ROOT, '.claude-plugin/marketplace.json'),
       content: renderClaudeCodeMarketplace(source),
+    },
+  ],
+  chatgpt: (source, precedence) => [
+    {
+      path: join(REPO_ROOT, CHATGPT_DIR, `skills/${CHATGPT_SKILL_NAME}/SKILL.md`),
+      content: renderChatgptSkill(source, precedence),
+    },
+    {
+      path: join(REPO_ROOT, CHATGPT_DIR, '.codex-plugin/plugin.json'),
+      content: renderChatgptPlugin(source),
     },
   ],
 });

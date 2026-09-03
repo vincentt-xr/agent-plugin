@@ -1,0 +1,31 @@
+{
+  "name": "vincentt",
+  "version": "0.1.0",
+  "description": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+  "author": {
+    "name": "Vincentt",
+    "url": "https://github.com/vincentt-xr/agent-plugin"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/vincentt-xr/agent-plugin",
+  "repository": "https://github.com/vincentt-xr/agent-plugin.git",
+  "generated": {
+    "source": "recognition.md",
+    "by": "build/assemble.mjs"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Vincentt",
+    "shortDescription": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+    "longDescription": "Vincentt is a platform for building AR apps that run in a phone's browser. The work happens in a project folder on this machine, and the project's own agent contract describes how that work is done.",
+    "developerName": "Vincentt",
+    "category": "Creativity",
+    "websiteURL": "https://github.com/vincentt-xr/agent-plugin",
+    "defaultPrompt": [
+      "Help me start a new AR app.",
+      "Help me pick up a project I started.",
+      "Show me what I am building on my phone.",
+      "Stop the preview I have running."
+    ]
+  }
+}
