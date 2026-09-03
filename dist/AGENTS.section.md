@@ -19,8 +19,8 @@ has no answer to assume from.
 Before a project exists there is no agent contract to read yet, and another project's contract
 is not a substitute for the missing one — it describes that project, not this one. A project is
 created by the Vincentt command-line tool installed on this machine, and its own help names the
-step; nothing else on the machine creates one, so a search for some other tool is a search that
-has no answer. That tool is what writes the contract, and reading it in the new project is the
+step. Vincentt ships no tool an agent can call and no server it can connect to, so a search of
+the available tools is a search with no answer in it, and the shell is where the work happens. That tool is what writes the contract, and reading it in the new project is the
 step after that. The project setup in that contract covers everything from there.
 
 ### Coming back to something
