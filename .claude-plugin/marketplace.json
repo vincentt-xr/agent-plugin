@@ -15,6 +15,7 @@
     {
       "name": "vincentt",
       "source": "./dist/claude-code",
+      "version": "0.2.0",
       "description": "Vincentt is a platform for building AR apps that run in a phone's browser. The work happens in a project folder on this machine, and the project's own agent contract describes how that work is done.",
       "author": {
         "name": "Vincentt",
