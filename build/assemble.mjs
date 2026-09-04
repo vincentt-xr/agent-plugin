@@ -346,6 +346,20 @@ export function renderClaudeCodeMarketplace(source) {
 // skills toggle and the starter prompts and stops, and the empty connect slot is the design
 // working rather than an omission.
 export const CHATGPT_SKILL_NAME = 'ar';
+
+// The four action skills' directory names, per pinned action id. The SAME split the commands
+// make and for the same reason: the id is the pinned surface, the name is display text. `phone`
+// stays a fine id for the moment "show it on a phone" and a poor name to read in a list, so it
+// resolves to `preview` here exactly as it does there — the one verb recognition.md may name.
+//
+// These are bare inside the plugin, like `ar`: the plugin directory is the namespace, so a name
+// here does not collide with another publisher's.
+const CHATGPT_ACTION_SKILL_NAME_FOR_ID = Object.freeze({
+  start: 'start',
+  resume: 'resume',
+  phone: 'preview',
+  stop: 'stop',
+});
 export const CHATGPT_PLUGIN_NAME = 'vincentt';
 export const CHATGPT_DIR = 'dist/chatgpt';
 
@@ -353,6 +367,10 @@ export const CHATGPT_DIR = 'dist/chatgpt';
 // classification the host defines, not a sentence about what the product does — the same class
 // of field as `license` and `homepage` (§6).
 export const CHATGPT_CATEGORY = 'Creativity';
+
+// The mark's own gradient start, the same value the console's favicon carries. A hex triple is
+// not a sentence about the product, so it is listing metadata like the category above it.
+export const BRAND_COLOR = '#1e4492';
 
 // §6: the starter prompts. This host renders a row a person CLICKS TO SPEAK, so the row has to
 // be a sentence in the person's own voice — which is a shape `actions.yml`'s labels deliberately
@@ -376,6 +394,39 @@ export function renderChatgptSkill(source, precedence) {
   const description = renderDescription(source);
   const front = ['---', `name: ${CHATGPT_SKILL_NAME}`, `description: ${description}`, '---', ''];
   return `${front.join('\n')}\n${renderSkillBody(source, precedence)}`;
+}
+
+// —— the action skills ————————————————————————————————————————————————————————
+
+// THE SAME FOUR ACTIONS, in the shape this host has. Claude Code renders them as slash commands
+// because that host has a command surface; this one has none, and renders a plugin's components
+// as skills — so here the four are skills. Same argument, same generated bodies, same pinned set:
+// `PINNED_ACTION_IDS`, so a fifth is a record change before it is ever a directory row.
+//
+// Why this is not a per-host affordance. Before it, this host's listing showed ONE component
+// where Claude Code's panel showed five, and the four moments were reachable only as starter
+// prompts on the directory page — not from inside the plugin at all. The moments are the
+// feature; a host that cannot see them is missing the feature, not carrying less of it.
+//
+// The BODY is a pointer, never a copy. `ar` holds recognition.md and these name a section of it,
+// exactly as a command body does — a second copy of the text here is the duplication the whole
+// generated-not-authored rule exists to prevent, and it would put the same sentences in a
+// creator's tree twice.
+export function renderChatgptActionSkills(source) {
+  const doc = parseRecognition(source);
+  return PINNED_ACTION_IDS.map((id, i) => {
+    const section = doc.sections[i];
+    const name = CHATGPT_ACTION_SKILL_NAME_FOR_ID[id];
+    const front = ['---', `name: ${name}`, `description: ${LABEL_FOR_ID[id]}`, '---', ''];
+    const body = [
+      `The person is asking about: **${section.heading}**.`,
+      '',
+      `Follow the \`${CHATGPT_SKILL_NAME}\` skill's "${section.heading}" section, then the`,
+      "project's own agent contract.",
+      '',
+    ];
+    return { name, content: [...front, ...body].join('\n') };
+  });
 }
 
 export function renderChatgptPlugin(source) {
@@ -402,6 +453,16 @@ export function renderChatgptPlugin(source) {
       developerName: AUTHOR.name,
       category: CHATGPT_CATEGORY,
       websiteURL: HOMEPAGE,
+      // The mark, as the console serves it, and the brand color read off the mark's own gradient.
+      // Listing metadata like `category` and `license` — an image is not a sentence about what
+      // the product does, so it costs the wrapper none of its non-generated word ceiling.
+      //
+      // The host validates that these paths resolve to real files and checks nothing else: not
+      // the format, not the dimensions. PNG is what its own sample manifest uses for these two
+      // fields, so the raster is what ships here and the vector serves the per-skill icons.
+      brandColor: BRAND_COLOR,
+      composerIcon: './assets/icon.png',
+      logo: './assets/logo.png',
       // REQUIRED by this host's manifest validation: a non-empty array of strings, with no
       // vocabulary it checks against. So the honest answer is the four moments themselves —
       // the SAME labels `actions.yml` carries and the Claude Code commands describe, keyed by
@@ -523,6 +584,10 @@ const WRAPPER_OUTPUTS = Object.freeze({
       path: join(REPO_ROOT, CHATGPT_DIR, `skills/${CHATGPT_SKILL_NAME}/SKILL.md`),
       content: renderChatgptSkill(source, precedence),
     },
+    ...renderChatgptActionSkills(source).map((s) => ({
+      path: join(REPO_ROOT, CHATGPT_DIR, `skills/${s.name}/SKILL.md`),
+      content: s.content,
+    })),
     {
       path: join(REPO_ROOT, CHATGPT_DIR, '.codex-plugin/plugin.json'),
       content: renderChatgptPlugin(source),

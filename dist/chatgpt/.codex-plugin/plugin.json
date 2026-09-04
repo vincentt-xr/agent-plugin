@@ -17,6 +17,9 @@
     "developerName": "Vincentt",
     "category": "Creativity",
     "websiteURL": "https://github.com/vincentt-xr/agent-plugin",
+    "brandColor": "#1e4492",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
     "capabilities": [
       "Start a new AR app",
       "Pick up a project",

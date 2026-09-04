@@ -1,0 +1,17 @@
+<!-- The Vincentt mark, as the console serves it. The artwork is unchanged; only the viewBox
+     differs, cropped to the mark's own bounding box and squared so the glyph sits centered in a
+     listing tile rather than high and left inside the console favicon's page-sized canvas. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="34 125 1972 1972">
+  <defs>
+    <linearGradient id="logo-grad" x1="915.36" y1="1120.73" x2="1546.44" y2="1029.41" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e4492"/>
+      <stop offset=".91" stop-color="#0b66a5"/>
+    </linearGradient>
+    <linearGradient id="logo-grad-2" x1="608.09" y1="2119.28" x2="715.51" y2="886.86" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e4492"/>
+      <stop offset=".91" stop-color="#0b66a5"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#logo-grad)" d="M1736.06,394.62l-195.11,1201.52c-4.4,27.09-30.43,49.25-57.87,49.25h-416.79c17.53,0,31.13-15.24,29.14-32.66l-35.06-306.39,48.9-796.11c.76-13.07,12.02-25.27,24.98-27.2l601.81-88.41Z"/>
+  <path fill="url(#logo-grad-2)" d="M1074.53,1645.38H456.54L304.16,427.57c-2.17-17.47,11.49-32.95,29.14-32.95H912.07c29.37,0,55.64,23.98,58.33,53.23l98.2,858.49,35.06,306.39c1.99,17.41-11.61,32.66-29.14,32.66Z"/>
+</svg>

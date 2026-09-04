@@ -14,6 +14,9 @@ import {
   computeOutputs,
   listWrappers,
   renderChatgptPlugin,
+  renderChatgptSkill,
+  renderChatgptActionSkills,
+  renderClaudeCodeCommands,
   renderDescription,
   renderLongDescription,
   readSource,
@@ -77,8 +80,13 @@ test('QA-CGH-02 · description is byte-identical to what the other wrappers carr
 
 test('QA-CGH-02 · the skill body is byte-identical to the claude-code wrapper body', () => {
   const outputs = computeOutputs();
-  const chatgpt = outputs.find((o) => o.path.includes(`${CHATGPT_DIR}/skills/`));
-  const claude = outputs.find((o) => o.path.includes('dist/claude-code/skills/'));
+  // NAME THE SKILL. A substring match on `skills/` selected whichever output sorted first, which
+  // was `ar` only by luck of generation order — once the four action skills joined the tree, the
+  // same assertion could have compared a POINTER body against the full one and passed for the
+  // wrong reason. The comparison is only meaningful about the skill that carries recognition.md.
+  const chatgpt = outputs.find((o) => o.path.endsWith(`${CHATGPT_DIR}/skills/${CHATGPT_SKILL_NAME}/SKILL.md`));
+  const claude = outputs.find((o) => o.path.endsWith('dist/claude-code/skills/ar/SKILL.md'));
+  assert.ok(chatgpt && claude, 'both full-body skills resolve by name');
 
   // Frontmatter differs (the skill name is resolved per host); the BODY may not. A wrapper that
   // carried a different body would be a second product wearing one name.
@@ -223,4 +231,85 @@ test('QA-CGH-06 · the chatgpt marketplace entry names the version the host comp
 
   const claude = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
   assert.equal(claude.plugins[0].version, pkg.version);
+});
+
+// —— QA-CGH-07 · the four moments are reachable inside the plugin ——————————————
+//
+// Before these, this host's listing showed ONE component where the Claude Code panel showed
+// five, and the four moments were reachable only as starter prompts on the directory page. The
+// four are the feature; a host that cannot see them carries less than the product, not less of
+// the packaging.
+
+test('QA-CGH-07 · there is one action skill per pinned id, and no fifth', () => {
+  const skills = renderChatgptActionSkills(readSource());
+
+  assert.equal(skills.length, PINNED_ACTION_IDS.length);
+  assert.ok(skills.length <= SECTION_CEILING, 'a fifth skill would be a fifth moment');
+  assert.equal(new Set(skills.map((s) => s.name)).size, skills.length, 'names are distinct');
+  assert.ok(!skills.some((s) => s.name === CHATGPT_SKILL_NAME), 'none may shadow the body skill');
+});
+
+test('QA-CGH-07 · the action skills and the claude-code commands are the same four', () => {
+  const source = readSource();
+  const skills = renderChatgptActionSkills(source).map((s) => s.name);
+  const commands = renderClaudeCodeCommands(source).map((c) => c.name);
+
+  // THE SAME ACTIONS in two shapes. A name that existed on one host and not the other would be
+  // the per-host affordance the wrapper rules exist to prevent — the check that keeps the two
+  // trees honest is that the sets match, not that each looks reasonable alone.
+  assert.deepEqual(skills, commands);
+});
+
+test('QA-CGH-07 · an action skill POINTS at the body skill and never copies it', () => {
+  const source = readSource();
+  const headings = parseRecognition(source).sections.map((s) => s.heading);
+  const full = renderChatgptSkill(source, 'precedence.');
+
+  for (const skill of renderChatgptActionSkills(source)) {
+    assert.ok(
+      skill.content.includes(`\`${CHATGPT_SKILL_NAME}\` skill's`),
+      `${skill.name} must name the skill that carries the source`,
+    );
+    // A pointer is SHORT. A copy would put recognition.md in a creator's tree five times, and
+    // would be the duplication the generated-not-authored rule exists to prevent.
+    assert.ok(skill.content.length < full.length / 4, `${skill.name} must not restate the body`);
+    assert.ok(
+      headings.some((h) => skill.content.includes(h)),
+      `${skill.name} must name a real section of recognition.md`,
+    );
+  }
+});
+
+test('QA-CGH-07 · every action skill carries the frontmatter the host requires', () => {
+  for (const skill of renderChatgptActionSkills(readSource())) {
+    const [, front] = skill.content.split('---');
+    assert.match(front, /\nname: \S+/, 'a non-empty name');
+    assert.match(front, /\ndescription: \S+/, 'a non-empty description');
+    // The host refuses a plugin skill that opts out of model invocation.
+    assert.ok(!front.includes('disable-model-invocation'), 'a plugin skill may not opt out');
+  }
+});
+
+// —— QA-CGH-08 · the mark ——————————————————————————————————————————————————————
+
+test('QA-CGH-08 · the icon fields resolve to files that exist in the built tree', () => {
+  const { interface: iface } = JSON.parse(renderChatgptPlugin(readSource()));
+
+  // The host validates that an asset path RESOLVES and checks nothing else — not the format and
+  // not the dimensions. So the arm that matters is existence, and a path that points outside the
+  // plugin root is the one the host rejects.
+  for (const field of ['composerIcon', 'logo']) {
+    const raw = iface[field];
+    assert.ok(raw.startsWith('./'), `${field} must be relative to the plugin root`);
+    assert.ok(!raw.includes('..'), `${field} must not escape the plugin root`);
+    assert.ok(existsSync(join(REPO_ROOT, CHATGPT_DIR, raw)), `${field} must point at a real file`);
+  }
+});
+
+test('QA-CGH-08 · the brand color is the mark’s own, in the form the host accepts', () => {
+  const { interface: iface } = JSON.parse(renderChatgptPlugin(readSource()));
+
+  assert.match(iface.brandColor, /^#[0-9a-fA-F]{6}$/, 'the host accepts #RRGGBB only');
+  const svg = readFileSync(join(REPO_ROOT, CHATGPT_DIR, 'assets/logo.svg'), 'utf8');
+  assert.ok(svg.includes(iface.brandColor), 'the color is read off the mark, not picked beside it');
 });
