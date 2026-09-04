@@ -41,7 +41,10 @@ which carries the phone link, the code that scans to it, and the view of the dev
 already on that page, so a reply carrying both hands the person a choice at the moment they want
 an address rather than a decision. That one address belongs in the reply as soon as it exists,
 because the person is waiting to open it, and it is written there plainly rather than as
-something to copy — the person is reaching for a phone, not for a clipboard.
+something to copy, so that opening it is one gesture. Where it opens is the machine the person
+is reading on, not the phone: the page is what carries the phone across, by a code the phone
+scans. A reply that sends that address to a phone describes the wrong screen, and the person
+holding the phone is the one who finds out.
 
 ### Finishing
 
