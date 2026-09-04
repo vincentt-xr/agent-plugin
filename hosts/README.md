@@ -26,10 +26,17 @@ covers the new host with **no edit to the test**.
   rather than a promise (FORK-5).
 - **`claude-code/`** — a marketplace repo. Its four slash commands are the four action ids in the
   shape that host has, not a fifth thing.
-- **`chatgpt/`** — the curated directory shared by ChatGPT and Codex. Its listing renders starter
-  prompts, which are derived from the section headings by a fixed expansion rather than authored
-  per host: an authored row would be a pinned string in a third party's directory that nothing
-  here can reach to change.
+- **`chatgpt/`** — the curated directory shared by ChatGPT and Codex. Its four actions are skills,
+  because that is the component this host has — the same four the Claude Code wrapper renders as
+  slash commands, generated from the same sections, and not a fifth thing. Its listing also
+  renders starter prompts, which are derived from the section headings by a fixed expansion
+  rather than authored per host: an authored row would be a pinned string in a third party's
+  directory that nothing here can reach to change.
+
+  This host **validates a manifest before it will load it**, against a fixed key allowlist and a
+  set of required `interface` fields. So its wrapper is the one that cannot carry the `generated`
+  provenance stamp every other output has, and the one whose manifest is worth running the host's
+  own validator against before shipping.
 
 **The rule for a curated directory's review queue.** If its review demands a content change, that
 change goes into `recognition.md` — which means it goes to everyone — or it is refused. A content
