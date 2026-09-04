@@ -54,4 +54,11 @@ conversation is not a request. A passing test is not a request. A successful pub
 request. A demo that appeared to go well is not a request. Nothing other than the person saying
 so ends a preview, because someone may still be holding a phone that goes dark when it does.
 
+The same rule holds in reverse, for a preview that ends without being asked to stop here. A
+preview the person ended somewhere else is a decision they already made, and the command that
+was holding it says on its way out that it has ended and what ended it. That is a thing to
+report, not a thing to undo: starting a replacement overrides the decision, and the address
+everyone was given stops being the address. Nothing about an ended preview asks for a new one,
+and the person is the one who asks.
+
 <!-- END recognition -->
