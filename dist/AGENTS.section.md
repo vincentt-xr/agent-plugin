@@ -35,8 +35,13 @@ is the one who resolves that, not an assumption about which they meant.
 
 When the person asks to see it, try it, test it on a device, show a client, or get it on their
 phone, a preview is what they are asking for. A preview is what makes the work reachable at an
-address a phone can open, and the project's agent contract names the command. The address belongs
-in the reply as soon as it exists, because the person is waiting to open it.
+address a phone can open, and the project's agent contract names the command. A preview produces
+two addresses, and only one of them belongs in the reply: the project's page in the console,
+which carries the phone link, the code that scans to it, and the view of the device. The other is
+already on that page, so a reply carrying both hands the person a choice at the moment they want
+an address rather than a decision. That one address belongs in the reply as soon as it exists,
+because the person is waiting to open it, and it is written there plainly rather than as
+something to copy — the person is reaching for a phone, not for a clipboard.
 
 ### Finishing
 
