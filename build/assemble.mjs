@@ -28,7 +28,14 @@ export const PACKAGE_NAME = '@vincentt-xr/agent-plugin';
 
 // Shared by every wrapper manifest. A per-wrapper literal is how two hosts end up published at
 // two versions from one commit, which is the drift the whole hosts/ shape exists to prevent.
-export const PACKAGE_VERSION = '0.1.0';
+//
+// READ FROM package.json RATHER THAN RESTATED HERE, for that same reason one level up: a literal
+// beside package.json's own is a second encoding of the version, and the two went out of step
+// immediately — package.json sat at 0.1.0 through five content changes while nothing bumped
+// either. `npm version` now moves both, because there is only one.
+export const PACKAGE_VERSION = JSON.parse(
+  readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'),
+).version;
 export const HOMEPAGE = 'https://github.com/vincentt-xr/agent-plugin';
 
 // The ids are pinned; the SECTION each maps to and the LABEL each shows are read from
@@ -311,6 +318,12 @@ export function renderClaudeCodeMarketplace(source) {
       {
         name: CLAUDE_CODE_PLUGIN_NAME,
         source: `./${CLAUDE_CODE_DIR}`,
+        // The version the HOST COMPARES AGAINST. Its absence was not cosmetic: with no version
+        // in the entry, the plugin panel fell back to a constant, so an installed copy and a
+        // marketplace three content commits ahead both read `0.1.0` and the panel said "On
+        // latest version" with Update greyed out. A creator could not learn from the product
+        // that shipped text had changed. Reported from a real session.
+        version: PACKAGE_VERSION,
         description: renderLongDescription(source),
         author: AUTHOR,
         license: 'MIT',
