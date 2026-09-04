@@ -387,7 +387,10 @@ export function renderChatgptPlugin(source) {
     license: 'MIT',
     homepage: HOMEPAGE,
     repository: `${HOMEPAGE}.git`,
-    generated: { source: 'recognition.md', by: 'build/assemble.mjs' },
+    // No `generated` stamp. This host VALIDATES its manifest against a fixed key allowlist and
+    // rejects anything outside it, so the provenance marker every other output carries cannot
+    // ride here. QA-CGH-02 detects a hand-edit by re-rendering the whole file, so nothing is
+    // lost by its absence — the stamp was a reader's courtesy, and the check never read it.
     // The one component reference. No `mcpServers`, no `apps` — see above.
     skills: './skills/',
     interface: {
@@ -399,6 +402,12 @@ export function renderChatgptPlugin(source) {
       developerName: AUTHOR.name,
       category: CHATGPT_CATEGORY,
       websiteURL: HOMEPAGE,
+      // REQUIRED by this host's manifest validation: a non-empty array of strings, with no
+      // vocabulary it checks against. So the honest answer is the four moments themselves —
+      // the SAME labels `actions.yml` carries and the Claude Code commands describe, keyed by
+      // the pinned ids. A hand-written list here would be a fifth pinned surface in a third
+      // party's directory, which is the thing FORK-A already refused once.
+      capabilities: PINNED_ACTION_IDS.map((id) => LABEL_FOR_ID[id]),
       defaultPrompt: PINNED_ACTION_IDS.map((id) => STARTER_PROMPT_FOR_ID[id]),
     },
   };
@@ -426,6 +435,11 @@ export function renderChatgptMarketplace(source) {
       {
         name: CHATGPT_PLUGIN_NAME,
         source: { source: 'local', path: `./${CHATGPT_DIR}` },
+        // The version the HOST COMPARES AGAINST — the same field, for the same reason, as the
+        // Claude Code entry beside it. Fixed there and not here, so this host kept the bug the
+        // other one shed: with no version in the entry, an installed copy and a marketplace
+        // several content commits ahead both read as current, and the listing offers no update.
+        version: PACKAGE_VERSION,
         description: renderLongDescription(source),
         author: AUTHOR,
         license: 'MIT',

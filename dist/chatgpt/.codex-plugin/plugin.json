@@ -9,10 +9,6 @@
   "license": "MIT",
   "homepage": "https://github.com/vincentt-xr/agent-plugin",
   "repository": "https://github.com/vincentt-xr/agent-plugin.git",
-  "generated": {
-    "source": "recognition.md",
-    "by": "build/assemble.mjs"
-  },
   "skills": "./skills/",
   "interface": {
     "displayName": "Vincentt",
@@ -21,6 +17,12 @@
     "developerName": "Vincentt",
     "category": "Creativity",
     "websiteURL": "https://github.com/vincentt-xr/agent-plugin",
+    "capabilities": [
+      "Start a new AR app",
+      "Pick up a project",
+      "Show it on a phone",
+      "Stop the preview"
+    ],
     "defaultPrompt": [
       "Help me start a new AR app.",
       "Help me pick up a project I started.",

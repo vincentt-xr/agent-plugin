@@ -161,3 +161,66 @@ test('QA-CGH-03 · the skill name is bare inside the plugin and qualified on dis
   assert.equal(CHATGPT_SKILL_NAME, 'ar');
   assert.ok(install.installPaths.some((p) => p.endsWith('vincentt-ar')));
 });
+
+// —— QA-CGH-05 · the manifest satisfies the host's own validation ——————————————
+//
+// This host VALIDATES a manifest before it will load it, against a fixed key allowlist and a
+// set of required interface fields. Both arms below were REGRESSIONS FOUND IN SHIPPED OUTPUT:
+// the directory listing carried a `generated` stamp the allowlist rejects, and omitted the
+// required `capabilities`. A green suite proved nothing, because nothing here ran the host's
+// rules. These cases are that check, transcribed — not a restatement of the renderer.
+
+test('QA-CGH-05 · the manifest carries no key the host rejects', () => {
+  const plugin = JSON.parse(renderChatgptPlugin(readSource()));
+
+  // Transcribed from the host's validator. `generated` is absent from it by design: every other
+  // output this repo emits carries that stamp and this one may not.
+  const ALLOWED = new Set([
+    'id', 'name', 'version', 'description', 'skills', 'apps', 'mcpServers',
+    'interface', 'author', 'homepage', 'repository', 'license', 'keywords',
+  ]);
+  const rejected = Object.keys(plugin).filter((k) => !ALLOWED.has(k));
+  assert.deepEqual(rejected, [], 'a key outside the allowlist fails the host, not this suite');
+});
+
+test('QA-CGH-05 · every interface field the host requires is present and non-empty', () => {
+  const { interface: iface } = JSON.parse(renderChatgptPlugin(readSource()));
+
+  for (const field of ['displayName', 'shortDescription', 'longDescription', 'developerName', 'category']) {
+    assert.equal(typeof iface[field], 'string');
+    assert.ok(iface[field].trim().length > 0, `interface.${field} must be a non-empty string`);
+  }
+  assert.ok(Array.isArray(iface.capabilities) && iface.capabilities.length > 0);
+  assert.ok(
+    iface.capabilities.every((c) => typeof c === 'string' && c.trim().length > 0),
+    'capabilities must be an array of non-empty strings',
+  );
+});
+
+test('QA-CGH-05 · capabilities are the pinned moments, so they cannot drift from the source', () => {
+  const { interface: iface } = JSON.parse(renderChatgptPlugin(readSource()));
+  const labels = parseRecognition(readSource()).sections.map((s) => s.heading);
+
+  // Keyed by the pinned ids like the prompts are: a fifth capability is a fifth moment, which
+  // is a record change before it is ever a row in a third party's directory.
+  assert.equal(iface.capabilities.length, PINNED_ACTION_IDS.length);
+  assert.ok(iface.capabilities.length <= SECTION_CEILING, 'a fifth row would be a fifth moment');
+  assert.equal(new Set(iface.capabilities).size, iface.capabilities.length, 'no duplicate rows');
+  assert.equal(labels.length, iface.capabilities.length, 'one capability per section');
+});
+
+// —— QA-CGH-06 · the marketplace entry carries a comparable version ————————————
+
+test('QA-CGH-06 · the chatgpt marketplace entry names the version the host compares against', () => {
+  const marketplace = JSON.parse(readFileSync(join(REPO_ROOT, '.agents/plugins/marketplace.json'), 'utf8'));
+  const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
+
+  // Fixed once for the Claude Code entry and not here, so this host kept the bug the other one
+  // shed: with no version, an installed copy and a marketplace several commits ahead both read
+  // as current and the listing offers no update. Both entries are asserted so the next fix to
+  // either cannot land on one alone.
+  assert.equal(marketplace.plugins[0].version, pkg.version);
+
+  const claude = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
+  assert.equal(claude.plugins[0].version, pkg.version);
+});
