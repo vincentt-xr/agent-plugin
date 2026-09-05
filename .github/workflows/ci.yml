@@ -54,6 +54,40 @@ jobs:
           QA_F14_TEMPLATE_DIR: ${{ github.workspace }}/.v2-template
         run: npm test
 
+  # A change to the shipped content must move the version — the same class the assembly check owns
+  # one level down. There, a generated file may not drift from its source; here, the version a HOST
+  # COMPARES AGAINST may not drift from the content it describes.
+  #
+  # Claude Code's marketplace source is this git repo, so a creator updates by refreshing their
+  # local marketplace clone and letting the host compare versions. Content moved, version frozen,
+  # and that comparison reports "on latest version" with Update greyed out — truthfully, about
+  # stale content. The creator cannot learn from the product that there is anything to get.
+  #
+  # Scoped like the adversarial review and for its stated reason: it fires only on the files that
+  # actually reach a creator. A check that fires on every PR trains people to satisfy it without
+  # reading it.
+  version-bump:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Collect the changed files and both sides of package.json
+        run: |
+          git fetch --quiet origin "${{ github.base_ref }}"
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed-files.txt
+          cat /tmp/changed-files.txt
+          git show "origin/${{ github.base_ref }}:package.json" > /tmp/base-package.json
+          cp package.json /tmp/head-package.json
+
+      - name: Shipped content that changed has moved the version
+        run: node build/check-version-bump.mjs /tmp/changed-files.txt /tmp/base-package.json /tmp/head-package.json
+
   # The adversarial review (implementation.md §4(4)) is the ONLY control that owns the lint's
   # residual, and that residual is a CLASS rather than a list of shapes: any grammatically
   # ordinary declarative sentence passes every syntactic arm. A build-time security pass wrote
