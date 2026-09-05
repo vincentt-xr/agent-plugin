@@ -2,10 +2,14 @@ name: Release
 
 # The package's release path. Runs the same suite CI runs, then the publish gate.
 #
-# ⚠ THE PUBLISH STEP IS DELIBERATELY NOT WIRED YET. implementation.md §11 requires f13 to lock
-# its route before the package publishes, and agent-host-grounding's template tag to be cut. The
-# gate below is built, tested, and RUN; the step that would push the artifact is absent until
-# those land. A release job that published today would satisfy neither ordering rule.
+# ⚠ THE PUBLISH STEP IS NOT WIRED. The gate below is built, tested, and RUN; the step that would
+# push the artifact is absent.
+#
+# Both ordering rules implementation.md §11 named have since been SATISFIED (2026-09-05): f13
+# shipped and its console route is live, and v2-template@latest carries the assembled section —
+# the gate below passes today. What remains is mechanical rather than an ordering question:
+# uncommenting the step, dropping "private": true from package.json, and giving the job an npm
+# token. Until that is done a tag runs the gates and publishes nothing, silently.
 
 on:
   push:
@@ -42,6 +46,6 @@ jobs:
         run: npm run publish-gate
 
       # - name: Publish
-      #   BLOCKED ON §11: f13's route must lock, and agent-host-grounding's template tag must be
-      #   cut, before this is wired. Left commented rather than removed so the ordering is visible
-      #   at the place it is enforced.
+      #   NOT WIRED. §11's two ordering rules are satisfied as of 2026-09-05; wiring this needs the
+      #   step written, "private": true dropped, and an npm token. Left commented rather than
+      #   removed so the absence is visible beside the gate that guards it.
