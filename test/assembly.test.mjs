@@ -259,15 +259,30 @@ test('§9.2 · the install manifest is discovered from the wrappers, not hand-li
   assert.deepEqual(listWrappers(), manifest.wrappers);
 });
 
-// —— the Claude Code commands are the SAME four actions ————————————————————————
+// —— the Claude Code commands are the SAME actions ————————————————————————————
 
 test('tripwire (b) · the commands are exactly the pinned action ids, no more', () => {
   const commands = renderClaudeCodeCommands(SHIPPED);
-  // The set is PINNED_ACTION_IDS, so a fifth command cannot be added here without adding a fifth
-  // MOMENT to recognition.md — and that is a record change, not a packaging change. This is what
-  // stops the command list becoming an affordance Claude Code has and no other host does.
+  // The set is PINNED_ACTION_IDS, so a further command cannot be added here without adding a
+  // further MOMENT to recognition.md — and that is a record change, not a packaging change. This
+  // is what stops the command list becoming an affordance Claude Code has and no other host does.
   assert.equal(commands.length, PINNED_ACTION_IDS.length);
-  assert.deepEqual(commands.map((c) => c.name), ['start', 'resume', 'preview', 'stop']);
+  assert.deepEqual(commands.map((c) => c.name), ['start', 'resume', 'preview', 'stop', 'outdated']);
+});
+
+test('the fifth moment is invocable as `outdated`, never as the act it performs', () => {
+  // f17: "a verb named after the act implies the CLI performs it, and an agent reading
+  // `vincentt update` in any text will run it." The MOMENT's id is `update` because that is what
+  // a person means; nothing a person or an agent can invoke may carry that word.
+  const commands = renderClaudeCodeCommands(SHIPPED);
+  assert.ok(PINNED_ACTION_IDS.includes('update'), 'update remains a pinned id');
+  for (const banned of ['update', 'upgrade']) {
+    assert.ok(
+      !commands.some((c) => c.name === banned),
+      `no command may be named "${banned}" — no such verb exists and this must not imply one does`,
+    );
+  }
+  assert.ok(commands.some((c) => c.name === 'outdated'), 'the verb that exists is what is offered');
 });
 
 test('a command NAME may differ from its pinned id; the id is what is pinned', () => {
@@ -315,8 +330,8 @@ test('§6 · the plugin manifest carries an author and the paragraph, both gener
 test('the generated actions.yml parses back to exactly what was rendered', () => {
   const yaml = renderActions(SHIPPED);
   const parsed = parseActions(yaml);
-  assert.equal(parsed.length, 4);
-  assert.deepEqual(parsed.map((a) => a.id), ['start', 'resume', 'phone', 'stop']);
+  assert.equal(parsed.length, 5);
+  assert.deepEqual(parsed.map((a) => a.id), ['start', 'resume', 'phone', 'stop', 'update']);
   for (const action of parsed) {
     assert.ok(action.label && action.section, 'each row carries a label and a section');
     assert.ok(SHIPPED.includes(`### ${action.section}`), 'each section names a real heading');
@@ -325,5 +340,5 @@ test('the generated actions.yml parses back to exactly what was rendered', () =>
 
 test('a source with the wrong number of sections fails the action rendering', () => {
   const short = SHIPPED.replace(/### Finishing[\s\S]*$/, '');
-  assert.throws(() => renderActions(short), /sections but 4 action ids are pinned/);
+  assert.throws(() => renderActions(short), /sections but 5 action ids are pinned/);
 });

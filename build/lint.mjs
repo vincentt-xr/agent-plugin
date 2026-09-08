@@ -15,6 +15,7 @@ import {
   LABEL_MAX_WORDS,
   PINNED_ACTION_IDS,
   WRAPPER_NON_GENERATED_WORD_CEILING,
+  PATH_ALLOWLIST,
 } from './pins.mjs';
 
 // §4.1: the one sentence in the package not from recognition.md. The lint exempts it BY EXACT
@@ -28,6 +29,9 @@ const ARMS = {
   FLAG: 'flag',
   EXIT_CODE: 'exit-code',
   FILE_PATH: 'file-path',
+  SEMVER: 'semver',
+  GIT_DESTRUCTIVE: 'git-destructive',
+  STATE_RESTORING: 'state-restoring',
   COMPONENT: 'component',
   VERB_PIN: 'verb-pin',
   SECOND_PERSON: 'second-person',
@@ -87,14 +91,230 @@ function lintExitCodes(text) {
   return out;
 }
 
+// §4: NARROWED by `plugin-holds-upgrade`, never disabled. The arm still finds every `.json`
+// token and every `.vincentt/`; what changed is that a token EXACTLY equal to an entry in
+// PATH_ALLOWLIST is permitted, because the upgrade moment's substance is a string that goes into
+// the ecosystem's own conventional manifest.
+//
+// The match is deliberately built the other way round from the obvious implementation. Rather
+// than exempting an allowlisted spelling from a `.json` hit, it CAPTURES THE WHOLE TOKEN around
+// the hit and compares that whole token to the allowlist. The obvious implementation — testing
+// whether the matched text or its surroundings "contain" an allowed name — is what admits
+// `../package.json`, `~/package.json` and `my-package.json`, each of which contains the allowed
+// name and none of which is it.
+//
+// A token runs to the nearest path/prose delimiter on each side, and `/`, `\` and `~` are
+// delimiters that BECOME PART of the token, so a path-qualified spelling can never compare equal
+// to a bare allowlisted name.
+//
+// `.vincentt/` is unconditional and is checked before the allowlist is consulted at all. No
+// entry in PATH_ALLOWLIST can admit it: it is tested as its own literal, not as a token.
+
+// A filename character: anything that is not whitespace and not prose punctuation. `.` is
+// handled separately, because a `.` belongs to the token only when another filename character
+// follows it — otherwise a sentence-terminal period is swallowed and the legitimate
+// `…into package.json.` compares as `package.json.` and fails.
+const FILENAME_CHAR = String.raw`[^\s\`"'(),;:!?]`;
+
+// The WHOLE token around a `.json`, extended in BOTH directions.
+//
+// Extending only LEFTWARDS was a real bug, and this repo's own corpus caught it rather than
+// review: `package.json.bak` matched with the token captured as `package.json`, compared equal to
+// the allowlist, and PASSED. A trailing-suffix spelling is as much a different file as a
+// leading-path one, so the token runs to a delimiter on both sides.
+const JSON_TOKEN = new RegExp(
+  String.raw`(?:${FILENAME_CHAR}(?<=[^.])|\.(?=${FILENAME_CHAR}))*` +
+    String.raw`\.json` +
+    String.raw`(?:\.(?=${FILENAME_CHAR})|${FILENAME_CHAR}(?<=[^.]))*`,
+  'g',
+);
+
 function lintFilePaths(text) {
   const out = [];
-  for (const m of text.matchAll(/\.json|\.vincentt\//g)) {
+
+  for (const m of text.matchAll(/\.vincentt\//g)) {
     out.push(
       violation(
         ARMS.FILE_PATH,
         `no file path may appear in recognition.md: found "${m[0]}". A path in the creator's ` +
-          `tree belongs in AGENTS.md or GROUNDING.md.`,
+          `tree belongs in AGENTS.md or GROUNDING.md. This one is refused absolutely — the path ` +
+          `allowlist cannot admit it.`,
+      ),
+    );
+  }
+
+  for (const m of text.matchAll(JSON_TOKEN)) {
+    const token = m[0];
+    if (PATH_ALLOWLIST.includes(token)) continue;
+    out.push(
+      violation(
+        ARMS.FILE_PATH,
+        `no file path may appear in recognition.md: found "${token}". The path allowlist holds ` +
+          `[${PATH_ALLOWLIST.join(', ')}] as EXACT tokens, and "${token}" is not one of them — a ` +
+          `path-qualified or differently-named spelling is a different file. A path in the ` +
+          `creator's tree belongs in AGENTS.md or GROUNDING.md.`,
+      ),
+    );
+  }
+  return out;
+}
+
+// §6.2 + §4: the SEMVER arm. Condition (ii) of the amended B-F14-1, mechanically.
+//
+// A published package that states a version is a stale copy the platform cannot recall on a
+// creator's timetable. Every version the upgrade procedure acts on arrives from the platform's
+// own public surface at the moment it runs, so a version-shaped string ANYWHERE in the source is
+// a fact that has entered the package.
+//
+// Deliberately shape-based rather than name-based: it does not matter which package a version
+// belongs to, or whether it is even a real one. The defect is a number that can go stale.
+function lintSemver(text) {
+  const out = [];
+  for (const m of text.matchAll(/\d+\.\d+\.\d+/g)) {
+    out.push(
+      violation(
+        ARMS.SEMVER,
+        `no version may appear in recognition.md: found "${m[0]}". The package holds a METHOD and ` +
+          `never a FACT (B-F14-1 condition (ii)) — every version the procedure acts on is read at ` +
+          `run time from the platform's public surface. A version published here is a stale copy ` +
+          `the platform cannot recall on a creator's timetable.`,
+      ),
+    );
+  }
+  return out;
+}
+
+// §6.2: the GIT-DESTRUCTIVE arm, and its companion the STATE-RESTORING-PHRASE arm.
+//
+// Two arms because the trap needs two. The first catches a named destructive command. The second
+// exists because THE TRAP SENTENCE CONTAINS NO COMMAND WORD: the independent security pass
+// produced "a working tree returned to its committed state is the previous contents back", which
+// names no command, states a fact, and completely specifies a hard reset. On this product's tree
+// a hard reset or force-clean destroys the project binding, the env file, and every asset the
+// creator dropped in, because those are ignored by version control and a dirty tree is the modal
+// case. So the second arm tests for a described TARGET STATE rather than for a verb.
+const GIT_DESTRUCTIVE = [
+  /\breset\s+--hard\b/i,
+  /\bgit\s+reset\b/i,
+  /\bclean\s+-fd\b/i,
+  /\bclean\s+-[a-z]*d[a-z]*f?\b/i,
+  /\bcheckout\s+\./i,
+  /\bgit\s+checkout\s+--\s/i,
+  /\bgit\s+stash\b/i,
+  /\bgit\s+revert\b/i,
+  /\bgit\s+restore\b/i,
+];
+
+// A state-restoring phrase names a state to put the tree INTO. `returned to`, `back to` and
+// `restored to` are only such phrases when their object NAMES A STATE — which is what keeps this
+// arm off the pinned heading "Coming back to something", whose object is a bare indefinite.
+//
+// That is not a softening for the heading's convenience: it is the actual distinction. "back to
+// something" describes a conversation resuming; "back to its committed contents" describes a
+// filesystem transformation. Testing the object is what tells them apart, and the arm is
+// MEASURED against both in the corpus rather than argued about.
+const RESTORING_OBJECT =
+  String.raw`(?:the\s+|its\s+|their\s+|a\s+|an\s+|how\s+|what\s+|where\s+)*` +
+  String.raw`(?:previous|prior|original|committed|clean|pristine|last|earlier|former|initial|old)?\s*` +
+  String.raw`(?:states?|contents?|versions?|conditions?|shapes?|forms?|bytes|files?|trees?|` +
+  String.raw`folders?|repositor(?:y|ies)|repos?|projects?|working\s+tree|they\s+were|it\s+was|` +
+  String.raw`things\s+were)`;
+
+const STATE_RESTORING = [
+  new RegExp(String.raw`\b(?:returned|restored|reverted|rolled|put|brought)\s+back\s+to\b`, 'i'),
+  new RegExp(String.raw`\b(?:returned|restored|reverted)\s+to\s+${RESTORING_OBJECT}`, 'i'),
+  new RegExp(String.raw`\bback\s+to\s+${RESTORING_OBJECT}`, 'i'),
+  /\bas\s+it\s+was\b/i,
+  /\bas\s+they\s+were\b/i,
+  /\bcommitted\s+state\b/i,
+  /\bclean\s+state\b/i,
+  /\bpristine\s+state\b/i,
+  /\buntouched\s+state\b/i,
+
+  // THE ACTION-KEYED ARM. Every pattern above tests the OBJECT — the state being
+  // restored — which is what keeps the arm off the pinned heading. An
+  // independent pass then walked nine sentences past all of them by naming the
+  // ACTION instead and letting the state be inferred: "Discarding every local
+  // modification leaves only what the last commit holds" fully specifies a hard
+  // reset while naming no state at all. "Removing files version control does not
+  // track" fully specifies the force-clean that deletes the gitignored project
+  // binding and the environment file.
+  //
+  // The destructive act has a small vocabulary with no innocent use in a
+  // procedure section, so keying on it costs nothing: the shipped file stays at
+  // zero violations, measured, and the corpus carries all nine as required-FAIL.
+  new RegExp(
+    String.raw`\b(?:discard(?:s|ing|ed)?|drop(?:s|ping|ped)?|throw(?:s|ing)?\s+away|` +
+      String.raw`remov(?:e|es|ing|ed)|delet(?:e|es|ing|ed)|wip(?:e|es|ing|ed))\b` +
+      String.raw`[\s\S]{0,60}?\b(?:local|uncommitted|unstaged|untracked|ignored|` +
+      String.raw`working\s+cop(?:y|ies)|modifications?|changes?|edits?)\b`,
+    'i',
+  ),
+  // A working tree equal to a commit IS the restored state, however it is phrased.
+  /\bmatch(?:es|ing|ed)?\s+HEAD\b/i,
+  /\b(?:the\s+)?(?:last|latest|most\s+recent)\s+commit\b/i,
+  /\bnothing\s+(?:shows\s+as\s+|is\s+)?modified\b/i,
+  /\bdiff\b[\s\S]{0,40}?\bis\s+empty\b/i,
+  // "overwritten from history" names the transformation without a target state.
+  /\bfrom\s+(?:version\s+control|git)?\s*history\b/i,
+
+  // The three the first draft of the action arm still missed, because they put
+  // the verb and the object in the other order, use a passive, or use a noun.
+  // Each fully determines a destructive command on its own:
+  //   "Removing files version control does not track"  -> clean -fd
+  //   "when local edits are dropped"                    -> reset --hard
+  //   "the recorded copy can replace what is on disk"   -> checkout -- <file>
+  new RegExp(
+    String.raw`\b(?:local|uncommitted|unstaged|untracked|ignored|working\s+cop(?:y|ies)|` +
+      String.raw`modifications?|changes?|edits?)\b[\s\S]{0,40}?\b(?:are|is|be|get(?:s)?)\s+` +
+      String.raw`(?:discarded|dropped|removed|deleted|wiped|thrown\s+away)\b`,
+    'i',
+  ),
+  new RegExp(
+    String.raw`\b(?:remov(?:e|es|ing)|delet(?:e|es|ing)|discard(?:s|ing)?|drop(?:s|ping)?)\b` +
+      String.raw`[\s\S]{0,60}?\bversion\s+control\s+does\s+not\s+track\b`,
+    'i',
+  ),
+  // A stored copy REPLACING what is on disk is the transformation itself.
+  new RegExp(
+    String.raw`\b(?:recorded|stored|committed|saved)\s+cop(?:y|ies)\b[\s\S]{0,40}?` +
+      String.raw`\b(?:replace(?:s|d)?|overwrit(?:e|es|ten))\b`,
+    'i',
+  ),
+];
+
+function lintGitDestructive(text) {
+  const out = [];
+  for (const re of GIT_DESTRUCTIVE) {
+    const m = re.exec(text);
+    if (!m) continue;
+    out.push(
+      violation(
+        ARMS.GIT_DESTRUCTIVE,
+        `no version-control command that discards work may appear in recognition.md: found ` +
+          `"${m[0]}". The procedure conveys recoverability by naming WHERE bytes are, never by ` +
+          `naming a transformation — an agent that reads one and reaches for it does more damage ` +
+          `than the upgrade did, and on this tree it destroys the project binding, the env file, ` +
+          `and every asset the creator added, all of which are ignored by version control.`,
+      ),
+    );
+  }
+  return out;
+}
+
+function lintStateRestoring(text) {
+  const out = [];
+  for (const re of STATE_RESTORING) {
+    const m = re.exec(text);
+    if (!m) continue;
+    out.push(
+      violation(
+        ARMS.STATE_RESTORING,
+        `no state-restoring phrase may appear in recognition.md: found "${m[0]}". THIS ARM EXISTS ` +
+          `BECAUSE THE TRAP SENTENCE CONTAINS NO COMMAND WORD — the security pass's own sentence ` +
+          `("a working tree returned to its committed state is the previous contents back") names ` +
+          `no command, states a fact, and fully specifies a hard reset. A described target state ` +
+          `is an operationalizable instruction; only a statement of where bytes ARE is not.`,
       ),
     );
   }
@@ -266,6 +486,9 @@ export function lintSource(source, options = {}) {
     ...lintFlags(source),
     ...lintExitCodes(source),
     ...lintFilePaths(source),
+    ...lintSemver(source),
+    ...lintGitDestructive(source),
+    ...lintStateRestoring(source),
     ...lintComponents(source),
     ...lintVerbs(source),
   );

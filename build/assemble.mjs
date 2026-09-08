@@ -50,6 +50,10 @@ const LABEL_FOR_ID = Object.freeze({
   resume: 'Pick up a project',
   phone: 'Show it on a phone',
   stop: 'Stop the preview',
+  // f17's fifth moment. "Bring" rather than "Update", because the label is a menu row a person
+  // reads as the thing they meant, and `update` is software-updater vocabulary that invites
+  // obedience — the same reason the CLI's verb is `outdated` and not `update`.
+  update: 'Bring packages up to date',
 });
 
 export function readSource() {
@@ -103,7 +107,7 @@ export function renderActions(source) {
   if (doc.sections.length !== ID_ORDER.length) {
     throw new Error(
       `assembly failed: recognition.md has ${doc.sections.length} sections but ${ID_ORDER.length} ` +
-        `action ids are pinned. The four moments are the feature; adding or removing one is a ` +
+        `action ids are pinned. The moments are the feature; adding or removing one is a ` +
         `record change, not a packaging change.`,
     );
   }
@@ -234,11 +238,18 @@ export const AUTHOR = Object.freeze({ name: 'Vincentt', url: HOMEPAGE });
 //
 // `preview` is also the ONE verb recognition.md is permitted to name (PINNED_PLUGIN_VERBS), so
 // the command a person types and the word the source is allowed to use are the same word.
+// `update` the ID resolves to `outdated` the COMMAND NAME, deliberately, and this is not
+// cosmetic. f17's own rule is that a verb named after the act implies the tool performs it —
+// "an agent reading `vincentt update` in any text will run it" — so no surface may present the
+// word `update` as something to invoke. The id stays `update` because it names the MOMENT (and
+// ids are append-only and unrenameable once installed); the invocable name is the verb that
+// actually exists.
 const COMMAND_NAME_FOR_ID = Object.freeze({
   start: 'start',
   resume: 'resume',
   phone: 'preview',
   stop: 'stop',
+  update: 'outdated',
 });
 
 // The frontmatter block. `name` is the skill's directory name because that is what the host
@@ -359,6 +370,9 @@ const CHATGPT_ACTION_SKILL_NAME_FOR_ID = Object.freeze({
   resume: 'resume',
   phone: 'preview',
   stop: 'stop',
+  // Same split, same reason as the command name beside it: `update` names the moment and is not
+  // a word this product offers as something to invoke.
+  update: 'outdated',
 });
 export const CHATGPT_PLUGIN_NAME = 'vincentt';
 export const CHATGPT_DIR = 'dist/chatgpt';
@@ -388,6 +402,9 @@ const STARTER_PROMPT_FOR_ID = Object.freeze({
   resume: 'Help me pick up a project I started.',
   phone: 'Show me what I am building on my phone.',
   stop: 'Stop the preview I have running.',
+  // The person's own voice, and it carries no version and no package name — the sentence a
+  // creator says, which is what the moment recognises.
+  update: 'Bring my Vincentt packages up to date.',
 });
 
 export function renderChatgptSkill(source, precedence) {

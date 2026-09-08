@@ -1,4 +1,4 @@
-// QA-F14-03, QA-F14-04, QA-F14-G3 — the reproducible assembly, the four labels,
+// QA-F14-03, QA-F14-04, QA-F14-G3 — the reproducible assembly, the five labels,
 // and the append-only id pin.
 //
 // Authored from features/f14-agent-plugin/qa.md §E and §I.
@@ -125,9 +125,15 @@ test("QA-F14-03 · the markers are present and correctly PAIRED", () => {
   );
 });
 
-// --- QA-F14-04 · the four labels --------------------------------------------
+// --- QA-F14-04 · the five labels --------------------------------------------
+//
+// SUPERSEDED BY `plugin-holds-upgrade` (2026-09-08): the ceiling moved 4 -> 5 and
+// `update` is the fifth id. The id is RETAINED rather than renumbered, because
+// f14's decisions cite this assertion and the ceiling is the thing being changed
+// rather than replaced. It stays a HARD ceiling, moved by one: its purpose is a
+// surface too small to rot, and that survives the change.
 
-const EXPECTED_IDS = ["start", "resume", "phone", "stop"];
+const EXPECTED_IDS = ["start", "resume", "phone", "stop", "update"];
 
 /** Parse the generated actions.yml without adding a YAML dependency to this repo. */
 function readActions(root = REPO) {
@@ -147,12 +153,12 @@ function readActions(root = REPO) {
   return entries;
 }
 
-test("QA-F14-04 · all four ids are present and NO fifth is accepted", () => {
+test("QA-F14-04 · all five ids are present and NO sixth is accepted", () => {
   const actions = readActions();
   assert.deepEqual(
     actions.map((a) => a.id).sort(),
     [...EXPECTED_IDS].sort(),
-    "actions.yml must carry exactly the four pinned ids",
+    "actions.yml must carry exactly the five pinned ids",
   );
 });
 
