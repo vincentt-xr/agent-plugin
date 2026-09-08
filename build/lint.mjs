@@ -230,6 +230,57 @@ const STATE_RESTORING = [
   /\bclean\s+state\b/i,
   /\bpristine\s+state\b/i,
   /\buntouched\s+state\b/i,
+
+  // THE ACTION-KEYED ARM. Every pattern above tests the OBJECT — the state being
+  // restored — which is what keeps the arm off the pinned heading. An
+  // independent pass then walked nine sentences past all of them by naming the
+  // ACTION instead and letting the state be inferred: "Discarding every local
+  // modification leaves only what the last commit holds" fully specifies a hard
+  // reset while naming no state at all. "Removing files version control does not
+  // track" fully specifies the force-clean that deletes the gitignored project
+  // binding and the environment file.
+  //
+  // The destructive act has a small vocabulary with no innocent use in a
+  // procedure section, so keying on it costs nothing: the shipped file stays at
+  // zero violations, measured, and the corpus carries all nine as required-FAIL.
+  new RegExp(
+    String.raw`\b(?:discard(?:s|ing|ed)?|drop(?:s|ping|ped)?|throw(?:s|ing)?\s+away|` +
+      String.raw`remov(?:e|es|ing|ed)|delet(?:e|es|ing|ed)|wip(?:e|es|ing|ed))\b` +
+      String.raw`[\s\S]{0,60}?\b(?:local|uncommitted|unstaged|untracked|ignored|` +
+      String.raw`working\s+cop(?:y|ies)|modifications?|changes?|edits?)\b`,
+    'i',
+  ),
+  // A working tree equal to a commit IS the restored state, however it is phrased.
+  /\bmatch(?:es|ing|ed)?\s+HEAD\b/i,
+  /\b(?:the\s+)?(?:last|latest|most\s+recent)\s+commit\b/i,
+  /\bnothing\s+(?:shows\s+as\s+|is\s+)?modified\b/i,
+  /\bdiff\b[\s\S]{0,40}?\bis\s+empty\b/i,
+  // "overwritten from history" names the transformation without a target state.
+  /\bfrom\s+(?:version\s+control|git)?\s*history\b/i,
+
+  // The three the first draft of the action arm still missed, because they put
+  // the verb and the object in the other order, use a passive, or use a noun.
+  // Each fully determines a destructive command on its own:
+  //   "Removing files version control does not track"  -> clean -fd
+  //   "when local edits are dropped"                    -> reset --hard
+  //   "the recorded copy can replace what is on disk"   -> checkout -- <file>
+  new RegExp(
+    String.raw`\b(?:local|uncommitted|unstaged|untracked|ignored|working\s+cop(?:y|ies)|` +
+      String.raw`modifications?|changes?|edits?)\b[\s\S]{0,40}?\b(?:are|is|be|get(?:s)?)\s+` +
+      String.raw`(?:discarded|dropped|removed|deleted|wiped|thrown\s+away)\b`,
+    'i',
+  ),
+  new RegExp(
+    String.raw`\b(?:remov(?:e|es|ing)|delet(?:e|es|ing)|discard(?:s|ing)?|drop(?:s|ping)?)\b` +
+      String.raw`[\s\S]{0,60}?\bversion\s+control\s+does\s+not\s+track\b`,
+    'i',
+  ),
+  // A stored copy REPLACING what is on disk is the transformation itself.
+  new RegExp(
+    String.raw`\b(?:recorded|stored|committed|saved)\s+cop(?:y|ies)\b[\s\S]{0,40}?` +
+      String.raw`\b(?:replace(?:s|d)?|overwrit(?:e|es|ten))\b`,
+    'i',
+  ),
 ];
 
 function lintGitDestructive(text) {

@@ -304,6 +304,70 @@ When the person wants to send it on, the address is the thing they share.
       'was moved by one and stays HARD at its new value; this row is the evidence it was moved ' +
       'rather than dissolved.',
   },
+  // —— the ACTION-keyed state-restoring arm ————————————————————————————————
+  // Nine phrasings an INDEPENDENT security pass walked past the object-keyed
+  // arms with. Every one names the ACTION and lets the state be inferred, which
+  // is exactly what testing the object cannot see. Each fully determines a
+  // destructive command: A/D/E/F/I a hard reset, H the force-clean that deletes
+  // the gitignored project binding and the environment file, C a checkout.
+  //
+  // They are the DURABLE half of the fix. The shipped file passes either way, so
+  // the corpus costs nothing and is what stops the next edit reopening this.
+  {
+    row: 'RESTORE_DISCARD_LOCAL',
+    source: frame('Discarding every local modification leaves only what the last commit holds.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_HEAD_MATCHES',
+    source: frame('When the working tree matches HEAD exactly, the earlier bytes are present again.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_RECORDED_COPY',
+    source: frame("Version control's recorded copy can replace what is on disk."),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_NO_DIFF',
+    source: frame('If the diff against the last commit is empty, the old contents are the ones on disk.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_THROW_AWAY',
+    source: frame('Throwing away the working copy yields the committed bodies.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_NOTHING_MODIFIED',
+    source: frame('Once nothing shows as modified, the earlier file bodies are what remain.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_FROM_HISTORY',
+    source: frame('Each file can be overwritten from history with its earlier body.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_CLEAN_UNTRACKED',
+    source: frame('Removing files version control does not track leaves only the tracked ones.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+  {
+    row: 'RESTORE_PASSIVE',
+    source: frame('The prior bodies become the on-disk bodies when local edits are dropped.'),
+    fires: true,
+    arm: 'state-restoring',
+  },
+
 ];
 
 // LABEL_ORPHAN is a row about actions.yml rather than about the source body, so it carries its
