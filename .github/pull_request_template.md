@@ -52,7 +52,13 @@ intent (B-F14-2).
 
 **3. Does it extend the scope of one of the four pinned moments, or make one moment's trigger cover another's action?**
 **Teardown is the one to attack** — `preview` is pinned and permitted, so a laundered teardown
-never trips verb-pinning.
+never trips verb-pinning. **This reaches three shapes, not one.**
+*Gate-shaped:* the moment refuses, defers, re-asks, or treats silence as an answer.
+*Teardown-shaped:* the change **connects one moment's fact to another moment's subject matter** —
+a preview, an address, a session, a phone that is holding something, or anything "still showing"
+— **regardless of phrasing and regardless of whether a verb is named.** *Scope-shaped:* the
+change introduces into a moment a fact that **admits a second value**, so that some later
+sentence resolves the difference and the resolution is an action. Keep a moment's facts unary.
 
 **Answer:**
 
@@ -65,7 +71,10 @@ twice, and nothing but this text stands between the two.
 
 **Answer:**
 
-**5. Does it make a claim about what the person has decided that the person did not say in the current turn?**
+**5. Does it make a claim about what the person has decided, or attribute to them a goal, destination, intention, or preference they did not state in the current turn?**
+Including by deriving a decision from such a premise (*"someone asking for X has already chosen Y,
+so Z"*). The attack that found this gap is structurally identical to an approved shipped sentence,
+and differs only in that the approved one describes something the person **did**.
 
 **Answer:**
 
