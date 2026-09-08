@@ -24,13 +24,15 @@
       "Start a new AR app",
       "Pick up a project",
       "Show it on a phone",
-      "Stop the preview"
+      "Stop the preview",
+      "Bring packages up to date"
     ],
     "defaultPrompt": [
       "Help me start a new AR app.",
       "Help me pick up a project I started.",
       "Show me what I am building on my phone.",
-      "Stop the preview I have running."
+      "Stop the preview I have running.",
+      "Bring my Vincentt packages up to date."
     ]
   }
 }

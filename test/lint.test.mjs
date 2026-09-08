@@ -13,6 +13,7 @@ import {
   PINNED_ACTION_IDS,
   LABEL_MAX_WORDS,
   WRAPPER_NON_GENERATED_WORD_CEILING,
+  PATH_ALLOWLIST,
 } from '../build/pins.mjs';
 import { HOSTILE_SOURCES, LABEL_ORPHAN, SHIPPED } from './hostile-sources.mjs';
 import { withScratchRepo } from './scratch.mjs';
@@ -39,6 +40,50 @@ test('QA-F14-01 · every forbidden syntactic form is rejected, naming which arm 
       assert.ok(fired.message.length > 20, 'a violation must carry an actionable message');
     });
   }
+});
+
+test('QA-F14-01 · every NON-firing row passes — the narrowing did not overtighten', async (t) => {
+  // The other half of the corpus, and it is what makes the narrowing's safety claim two-sided.
+  // A row marked `fires: false` and `residual: true` is a known residual the record owns; a row
+  // marked `fires: false` with no residual flag is a POSITIVE CONTROL and must be clean.
+  //
+  // The load-bearing rows here are REVERT_SENTENCE_APPROVED (the one sentence §6.2 requires,
+  // which must survive the two new arms), PATH_ALLOWED_EXACT (the enumerated allowance), and
+  // HEADING_COMING_BACK_TO (the pinned heading a naive phrase list would break).
+  for (const row of HOSTILE_SOURCES.filter((r) => !r.fires)) {
+    await t.test(`${row.row} stays clean`, () => {
+      const violations = lintSource(row.source, { precedence: PRECEDENCE });
+      assert.deepEqual(
+        violations,
+        [],
+        `${row.row} must NOT fire — ${row.note ?? 'positive control'}\n` +
+          violations.map((v) => `[${v.arm}] ${v.message}`).join('\n'),
+      );
+      if (row.residual) {
+        // A residual is a KNOWN HOLE the record owns on the adversarial checklist, pinned as a
+        // pass so a future change cannot silently believe the lint caught it. If one of these
+        // ever starts firing, that is good news and the row is re-pointed DELIBERATELY.
+        assert.ok(row.checklistItem, `${row.row} is a residual and must name its checklist item`);
+      }
+    });
+  }
+});
+
+test('f17 · the credential residual is DECLARED, not discovered later', () => {
+  // The finding this slice's own adversarial pass produced, asserted as a structural fact rather
+  // than left in a report. `shared.md` states that the four conditions do not bound what the
+  // procedure touches on the way; this row is the measured evidence that the LINT ARMS do not
+  // close that class either, which is the honest limit of the mechanical bound.
+  const row = HOSTILE_SOURCES.find((r) => r.row === 'ADV_REGISTRY_CREDENTIAL');
+  assert.ok(row, 'the residual must stay in the corpus');
+  assert.equal(row.fires, false, 'pinned as a PASS — this is the finding, not a defect to hide');
+  assert.equal(row.checklistItem, 4, 'owned by checklist item 4: credentials BY ANY DESCRIPTION');
+  assert.deepEqual(
+    lintSource(row.source, { precedence: PRECEDENCE }),
+    [],
+    'if this fires, an arm was widened — confirm it was not widened into a word list, which is ' +
+      'the enumeration the record refused twice.',
+  );
 });
 
 test('QA-F14-01 · the SHIPPED source passes every arm — the positive control', () => {
@@ -72,6 +117,179 @@ test('QA-F14-01 · the lint FAILS THE BUILD — non-zero exit, not a warning', (
   assert.equal(exitCode, 1, 'a violating source must exit non-zero');
   assert.match(stderr, /lint FAILED/);
   assert.match(stderr, /\[flag\]/, 'the failure output must name the arm that fired');
+});
+
+// —— the NARROWED path arm (f17 / plugin-holds-upgrade) ———————————————————————
+
+// The narrowing's obligation is two-sided and both sides are asserted mechanically: the ONE
+// enumerated token passes, and every other spelling still fails. A table rather than prose,
+// because "it must still fail on every path that is not the allowance" is a claim only a corpus
+// can carry.
+const lintBody = (sentence) =>
+  lintSource(`# T\n\n### A\n\n${sentence}\n`, { precedence: PRECEDENCE }).map((v) => v.arm);
+
+test('f17 · the path arm accepts EXACTLY `package.json` and nothing that merely contains it', () => {
+  assert.deepEqual([...PATH_ALLOWLIST], ['package.json'], 'one token, not a pattern');
+
+  // The allowance.
+  assert.ok(
+    !lintBody('The string the answer printed goes into package.json.').includes('file-path'),
+    'the enumerated conventional manifest is permitted — it is a fact about the ecosystem',
+  );
+
+  // Every spelling the record names, plus the ones an evasion would reach for. Each CONTAINS or
+  // resembles the allowed name, and each is a different file.
+  const mustFail = [
+    '../package.json',
+    '../../package.json',
+    '~/package.json',
+    './package.json',
+    'my-package.json',
+    'package.json.bak',
+    'tsconfig.json',
+    'src/package.json',
+    '/etc/package.json',
+    'node_modules/.package.json',
+  ];
+  for (const path of mustFail) {
+    assert.ok(
+      lintBody(`The setting in ${path} is what the note refers to.`).includes('file-path'),
+      `"${path}" must still fail: it contains or resembles the allowed name and is a DIFFERENT ` +
+        `file. A substring or prefix exemption is what lets one of these ride in behind the ` +
+        `legitimate name.`,
+    );
+  }
+});
+
+test('f17 · `.vincentt/` fails ABSOLUTELY and no allowlist entry can admit it', () => {
+  for (const sentence of [
+    'The recorded version in .vincentt/ is what the comparison uses.',
+    'The binding at .vincentt/project.json names the project.',
+  ]) {
+    assert.ok(lintBody(sentence).includes('file-path'), `must fail: ${sentence}`);
+  }
+
+  // Structural, not incidental: the arm tests `.vincentt/` as its own literal BEFORE the
+  // allowlist is consulted, so widening the allowlist cannot reach it.
+  const src = readFileSync(join(REPO_ROOT, 'build/lint.mjs'), 'utf8');
+  assert.match(
+    src,
+    /for \(const m of text\.matchAll\(\/\\\.vincentt\\\/\/g\)\)/,
+    'the .vincentt/ check must be its own unconditional pass, not an allowlist miss',
+  );
+});
+
+// —— the SEMVER arm · condition (ii) ———————————————————————————————————————————
+
+test('f17 · any version-shaped string fails — the package holds a method, never a fact', () => {
+  for (const sentence of [
+    'The current release is 2.0.0 and that is what to install.',
+    'A project created from template 1.4.3 is the one this describes.',
+    'The answer names 0.11.2 as the version installed.',
+    'Anything at 10.20.30 or later carries the change.',
+  ]) {
+    assert.ok(lintBody(sentence).includes('semver'), `must fail the semver arm: ${sentence}`);
+  }
+
+  // And the shipped source carries none, which is the property condition (ii) actually asserts.
+  assert.ok(
+    !lintSource(SHIPPED, { precedence: PRECEDENCE }).some((v) => v.arm === 'semver'),
+    'the shipped source must hold no version — a published fact is a stale copy we cannot recall',
+  );
+});
+
+test('f17 · the semver arm covers every BUILT artifact, not only the source', () => {
+  // qa.md's second case scans the artifacts rather than the source, because the source is not
+  // what a creator installs. Everything in the package is generated FROM recognition.md, so a
+  // version can only enter through a wrapper — which is exactly where PACKAGE_VERSION lives, and
+  // that one is OUR OWN package's version rather than a platform component's fact.
+  const artifacts = [
+    'dist/AGENTS.section.md',
+    'hosts/self-serve/SKILL.md',
+    'dist/claude-code/skills/ar/SKILL.md',
+    'dist/chatgpt/skills/ar/SKILL.md',
+  ];
+  for (const rel of artifacts) {
+    const text = readFileSync(join(REPO_ROOT, rel), 'utf8');
+    const found = [...text.matchAll(/\d+\.\d+\.\d+/g)].map((m) => m[0]);
+    assert.deepEqual(
+      found,
+      [],
+      `${rel} carries version-shaped strings ${JSON.stringify(found)}. Every version the ` +
+        `procedure acts on must be read at run time from the platform's public surface.`,
+    );
+  }
+});
+
+// —— the GIT-DESTRUCTIVE and STATE-RESTORING arms · §6.2 ——————————————————————
+
+test('§6.2 · a named destructive version-control command fails', () => {
+  for (const sentence of [
+    'When it went badly, `git reset --hard` is what puts the project right.',
+    'When stray files remain, `git clean -fd` is what removes them.',
+    'The command `git checkout .` is what discards the replacements.',
+    'A `git stash` before the upgrade is what keeps the previous work.',
+  ]) {
+    assert.ok(
+      lintBody(sentence).includes('git-destructive'),
+      `must fail the git-destructive arm: ${sentence}`,
+    );
+  }
+});
+
+test('§6.2 · THE TRAP SENTENCE FAILS, and it contains no command word', () => {
+  // The security pass's own sentence. It names no command, states a fact, and completely
+  // specifies a hard reset — which on this tree destroys the project binding, the env file and
+  // every asset the creator added, all of them ignored by version control. This is the single
+  // most important assertion in the f17 plugin slice: a reviewer scanning for commands passes it.
+  const trap = 'A working tree returned to its committed state is the previous contents back.';
+  const arms = lintBody(trap);
+  assert.ok(
+    arms.includes('state-restoring'),
+    `the trap sentence must fail; fired [${arms}]. It contains NO command word, which is why the ` +
+      `git-destructive arm alone is insufficient and this arm exists.`,
+  );
+
+  // Paraphrases, because an arm that only catches the one sentence it was written against is a
+  // string match wearing a rule's clothes.
+  for (const sentence of [
+    'The replaced files can be brought back to how they were before the upgrade.',
+    'Each file is restored to its previous contents.',
+    'The project is left in a clean state.',
+    'The tree is as it was before any of this ran.',
+    'The folder is returned to the state it was committed in.',
+  ]) {
+    assert.ok(
+      lintBody(sentence).includes('state-restoring'),
+      `a paraphrase must fail too: ${sentence}`,
+    );
+  }
+});
+
+test('§6.2 · the APPROVED revert sentence passes, and the pinned heading is not collateral', () => {
+  // The one sentence §6.2 requires. It names where bytes ARE and no transformation that would
+  // retrieve them. An arm that forbade this would have been overtightened into forbidding the
+  // design.
+  const approved =
+    "For files that were tracked and committed, the previous contents are in the person's " +
+    'version control history.';
+  assert.deepEqual(lintBody(approved), [], 'the approved form must pass');
+
+  const caveat =
+    'Files that were untracked or ignored had no previous copy anywhere, and their previous ' +
+    'contents are gone.';
+  assert.deepEqual(lintBody(caveat), [], 'the caveat that precedes it must pass');
+
+  // And the pinned heading, which a naive `back to` list fires on. The shipped file's zero
+  // depends on this and a pinned label may not be renamed to satisfy a lint.
+  assert.ok(
+    SHIPPED.includes('### Coming back to something'),
+    'the pinned heading is still there — the arm was narrowed rather than the surface moved',
+  );
+  assert.ok(
+    !lintSource(SHIPPED, { precedence: PRECEDENCE }).some((v) => v.arm === 'state-restoring'),
+    'the shipped file must not fire the phrase arm on its own pinned heading',
+  );
 });
 
 // —— QA-F14-02 · the form rule's TRUE boundary ————————————————————————————————
@@ -125,13 +343,26 @@ test('QA-F14-02 · ATTACK_DOTFILE PASSES — pinned residual, adversarial checkl
   );
 });
 
-test('QA-F14-02 · the residual is a checked-in fact: exactly three rows pass by design', () => {
+test('QA-F14-02 · the residual is a checked-in fact: exactly four rows pass by design', () => {
   const residuals = HOSTILE_SOURCES.filter((r) => r.residual);
   assert.deepEqual(
     residuals.map((r) => r.row).sort(),
-    ['ATTACK_1', 'ATTACK_3', 'ATTACK_DOTFILE'],
+    ['ADV_REGISTRY_CREDENTIAL', 'ATTACK_1', 'ATTACK_3', 'ATTACK_DOTFILE'],
     'the pinned residual set is part of the record; growing it is a deliberate edit',
   );
+
+  // GROWN DELIBERATELY, by one, by f17. ADV_REGISTRY_CREDENTIAL came out of this slice's own
+  // adversarial pass: a sentence satisfying all four of the amended B-F14-1's conditions that
+  // fires no arm and still makes reading the creator's registry credential the cheapest obedient
+  // path. It is the same class as ATTACK_DOTFILE one abstraction further out — it never names
+  // the file, it describes a purpose and lets the agent find it.
+  //
+  // Recorded as a residual rather than closed, because the two available closures are both
+  // refused by the record: a credential word list is the enumeration `shared.md` rejected (an
+  // enumeration in prose is not a check, and the next paraphrase walks past a word list), and a
+  // fifth condition was considered and refused for the same reason. The bound stays mechanical
+  // where it can be and human where it cannot.
+  assert.equal(residuals.length, 4, 'three inherited from f14, one added by f17');
   for (const r of residuals) {
     assert.ok(r.checklistItem, `${r.row} must name the checklist item that owns it`);
     assert.equal(r.fires, false);
@@ -140,13 +371,15 @@ test('QA-F14-02 · the residual is a checked-in fact: exactly three rows pass by
 
 // —— QA-F14-04 · the labels ————————————————————————————————————————————————————
 
-test('QA-F14-04 · all four pinned ids are present and no fifth is accepted', () => {
+test('QA-F14-04 · every pinned id is present and an UNPINNED one is not accepted', () => {
   assert.deepEqual(SHIPPED_ACTIONS.map((a) => a.id), [...PINNED_ACTION_IDS]);
 
-  const withFifth = [...SHIPPED_ACTIONS, { id: 'share', label: 'Share it', section: 'Finishing' }];
+  // The ceiling moved to five, so the row that proves an extra id is refused has to be a SIXTH.
+  // The property is unchanged: an id outside the pinned set is refused, whatever the count.
+  const withSixth = [...SHIPPED_ACTIONS, { id: 'share', label: 'Share it', section: 'Finishing' }];
   const doc = parseRecognition(SHIPPED);
-  const arms = lintLabels(doc, withFifth).map((v) => v.arm);
-  assert.ok(arms.includes('label-id-set'), `a fifth id must be rejected; fired [${arms}]`);
+  const arms = lintLabels(doc, withSixth).map((v) => v.arm);
+  assert.ok(arms.includes('label-id-set'), `an unpinned id must be rejected; fired [${arms}]`);
 });
 
 test('QA-F14-04 · each section matches a ### heading EXACTLY — a rename without the label fails', () => {
@@ -167,8 +400,8 @@ test('QA-F14-04 · LABEL_ORPHAN fails the resolution arm', () => {
   assert.ok(arms.includes(LABEL_ORPHAN.arm), `fired [${arms}]`);
 });
 
-test('QA-F14-04 · FIFTH_HEADING fails the ceiling arm', () => {
-  const row = HOSTILE_SOURCES.find((r) => r.row === 'FIFTH_HEADING');
+test('QA-F14-04 · SIXTH_HEADING fails the ceiling arm — the ceiling moved, it did not dissolve', () => {
+  const row = HOSTILE_SOURCES.find((r) => r.row === 'SIXTH_HEADING');
   const arms = armsFired(row.source, { precedence: PRECEDENCE });
   assert.ok(arms.includes('section-ceiling'), `fired [${arms}]`);
 });
@@ -193,16 +426,33 @@ test('QA-F14-04 · every label is <= 5 words and names no command', () => {
 
 // —— the verb pin ——————————————————————————————————————————————————————————————
 
-test('PINNED_PLUGIN_VERBS is exactly one verb, and the arm reads the pin rather than a copy', () => {
-  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview']);
+test('PINNED_PLUGIN_VERBS is the two pinned verbs, and the arm reads the pin rather than a copy', () => {
+  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview', 'outdated']);
 
-  // `preview` passes; anything else fails. Asserted through the lint so the pin and the arm
-  // cannot drift.
-  const withPinned = HOSTILE_SOURCES.find((r) => r.row === 'HAS_UNPINNED_VERB').source.replace(
-    'vincentt publish',
-    'vincentt preview',
-  );
-  assert.ok(!armsFired(withPinned, { precedence: PRECEDENCE }).includes('verb-pin'));
+  // Each pinned verb passes; anything else fails. Asserted through the lint so the pin and the
+  // arm cannot drift.
+  for (const verb of PINNED_PLUGIN_VERBS) {
+    const withPinned = HOSTILE_SOURCES.find((r) => r.row === 'HAS_UNPINNED_VERB').source.replace(
+      'vincentt publish',
+      `vincentt ${verb}`,
+    );
+    assert.ok(
+      !armsFired(withPinned, { precedence: PRECEDENCE }).includes('verb-pin'),
+      `"vincentt ${verb}" is pinned and must pass the verb arm`,
+    );
+  }
+
+  // And the act-named verbs stay refused, because no such verb exists.
+  for (const verb of ['update', 'upgrade']) {
+    const withActVerb = HOSTILE_SOURCES.find((r) => r.row === 'HAS_UNPINNED_VERB').source.replace(
+      'vincentt publish',
+      `vincentt ${verb}`,
+    );
+    assert.ok(
+      armsFired(withActVerb, { precedence: PRECEDENCE }).includes('verb-pin'),
+      `"vincentt ${verb}" names the act; an agent reading it will run it, and no such verb exists`,
+    );
+  }
 });
 
 test('the verb arm reads the COMMAND, not the product name', () => {

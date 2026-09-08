@@ -23,3 +23,7 @@ actions:
   - id: stop
     label: Stop the preview
     section: Finishing
+
+  - id: update
+    label: Bring packages up to date
+    section: Bringing things up to date

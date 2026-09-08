@@ -75,4 +75,64 @@ report, not a thing to undo: starting a replacement overrides the decision, and 
 everyone was given stops being the address. Nothing about an ended preview asks for a new one,
 and the person is the one who asks.
 
+### Bringing things up to date
+
+When the person asks to bring their Vincentt packages up to date, to get on the current release,
+or to catch up with the platform, what they are asking for is an upgrade of the platform's own
+packages and nothing else. Nothing about the app the person built is read in order to decide what
+to do, and nothing they wrote is a subject of it.
+
+The command `vincentt outdated` is what reports the situation, and asking it is the first step,
+because every fact this needs comes from that answer and none of it is carried here. That answer
+names each platform package, the version installed beside it, the exact string to place in
+package.json, and the migration note its author wrote for that move. A package the answer says
+nothing about is a package the platform has published nothing about, and that is not the same as
+a package being current.
+
+The packages are done one at a time, in the order the answer gives them, and each is the same
+three acts: the string from the answer goes into package.json, an install follows, and the call
+sites the migration note named are the ones that change. The note is its author's own words about
+what moved, so it is followed as written rather than summarised. A note saying no action is
+required means the string and the install are the whole of that package.
+
+Whether any of it worked is not something this can establish. No result is read back from any
+command, so a report says what was attempted and never that it succeeded, and running the build
+and the tests is the person's own next step.
+
+The template is the second half, and it is attempted only after the first half has reported a
+completed attempt for every package the answer named. While any of them is outstanding, the
+template half does not begin, and the report says the template was left alone and which package
+stopped it. A project holding replaced plumbing over packages that never moved compiles against
+neither version, which is worse than either half alone, so that order is the only protection
+there is and nothing stands in for it.
+
+The template's files are the plumbing a project was created from — the app shell, the helpers,
+the build configuration — and the platform names which of those it replaces, separately for each
+version, in the version it names them for. The scene file, and every file the person added, are
+in neither list. Those are never read, never compared and never written, so nothing of the
+person's own work is in the context of this at all.
+
+The version a project was created from is recorded in the project's own binding, and that record
+travels with the repository, so anyone able to land a commit is able to set it. A recorded value
+that is not three numbers separated by dots is not a version, and no baseline is what it means,
+rather than an error and rather than an attempt anyway. A recorded version naming nothing the
+platform published, or naming something that carries no list of replaceable files, is also no
+baseline. With no baseline there is nothing to compare against, so a file already matching the
+current version is confirmed, and every file differing from it is named and left where it is.
+
+Every statement a report makes about a file being unchanged rests on the recorded version it was
+compared against, so that version is named in the same breath, on the same screen, and never
+implied. A person whose project did not come from that version is reading a premise that is wrong
+in plain sight, which is the only honest way to report a comparison that cannot be verified.
+
+Replacing a file is the destructive half, and a report opens with it rather than closing with it.
+Files that were untracked or ignored had no previous copy anywhere, and their previous contents
+are gone, and those are the ones named first. For files that were tracked and committed, the
+previous contents are in the person's version control history. Nothing else kept a copy, no copy
+is made anywhere, and the person's own version control is the whole of what recovery exists.
+
+The record of which version a project was created from is written last, after the files and after
+the report. A record written any earlier would describe a project the next upgrade then reads as
+untouched by the person, and the only trace of what was replaced would be gone.
+
 <!-- END recognition -->
