@@ -17,7 +17,7 @@
         "source": "local",
         "path": "./dist/chatgpt"
       },
-      "version": "0.4.1",
+      "version": "0.4.2",
       "description": "Vincentt is a platform for building AR apps that run in a phone's browser. The work happens in a project folder on this machine, and the project's own agent contract describes how that work is done.",
       "author": {
         "name": "Vincentt",

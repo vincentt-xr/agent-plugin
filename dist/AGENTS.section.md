@@ -15,7 +15,8 @@ platform for it.
 A project is created by the Vincentt command-line tool, and asking the tool its version is what
 answers whether the tool can be reached. An answer names the version and the platform it is
 talking to. No answer names what to install, and naming it is the whole of what an agent does
-about that.
+about that. A tool already installed and still unreachable is a different situation from a
+missing one, and `npx @vincentt-xr/cli` is the form that needs no install and no path at all.
 
 The tool also says whether the person is signed in to an account. An account is what makes an AR
 app reachable from a phone, and making one is quick and open to anyone. What the tool says is
