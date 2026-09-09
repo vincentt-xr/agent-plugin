@@ -1,10 +1,13 @@
 # Vincentt recognition — ChatGPT and Codex install
 
-Requires the Vincentt CLI: `npm install -g @vincentt-xr/cli`
+Requires the Vincentt CLI. Either works:
+
+- `npx @vincentt-xr/cli` — no install, no PATH setup
+- `npm install -g @vincentt-xr/cli` — restart the app afterwards
+
+If `vincentt` is not found, use the `npx` form.
 
 Install from the Plugins Directory in ChatGPT or Codex.
-
-Start a new conversation after installing.
 
 Docs: https://github.com/vincentt-xr/agent-plugin
 
