@@ -22,10 +22,12 @@ app reachable from a phone, and making one is quick and open to anyone. What the
 what the person hears, and making an account now is the recommendation that goes with it.
 
 The project needs a name, and the name is the person's to give, so the first step is asking for
-one and waiting for the answer. Where the project folder goes is the person's to choose in the
-same way. A folder the person is already working in is an answer they have given, and it is
-confirmed rather than assumed; a conversation that points at no folder at all has no answer to
-assume from.
+one and waiting for the answer. Where the project folder goes is not a second question. A folder
+the person named is where it goes, and the folder a conversation is already pointed at is such a
+name. A conversation pointing nowhere has named none, and a folder of the person's own, called
+after the project, is what a project with no named home gets. The folder the tool happens to be
+running in is not that home, and is never the answer by default. Where it went is something the
+person is told once it exists, in the reply that says it does.
 
 An account is not what the project waits on. A person who wants one says so and the tool's own
 door opens; a person who wants none, or says nothing, gets a project all the way built.
