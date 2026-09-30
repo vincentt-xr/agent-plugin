@@ -1,38 +1,68 @@
 name: Release
 
-# The package's release path. Runs the same suite CI runs, then the publish gate.
+# The package's release path: tag checks, the CI suite on the tagged commit, then the publish gate.
 #
-# ⚠ THE PUBLISH STEP IS NOT WIRED. The gate below is built, tested, and RUN; the step that would
-# push the artifact is absent.
-#
-# Both ordering rules implementation.md §11 named have since been SATISFIED (2026-09-05): f13
-# shipped and its console route is live, and v2-template@latest carries the assembled section —
-# the gate below passes today. What remains is mechanical rather than an ordering question:
-# uncommenting the step, dropping "private": true from package.json, and giving the job an npm
-# token. Until that is done a tag runs the gates and publishes nothing, silently.
+# There is no npm publish, by decision. Creators install from this git repo as a marketplace, so
+# a tag is the release and nothing is pushed to a registry. The job summary says so on every run,
+# so a green run is never read as "published to npm". Wiring a publish later needs the step
+# written, "private": true dropped from package.json, and an npm token.
 
 on:
   push:
-    tags: ['[0-9]+.[0-9]+.[0-9]+']
+    # v* is listed only so a v-prefixed tag fails loudly instead of triggering nothing.
+    tags: ['[0-9]+.[0-9]+.[0-9]+', 'v*']
   workflow_dispatch:
 
 jobs:
-  release:
+  tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag is bare semver
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag $TAG is bare semver."
+            exit 0
+          fi
+          echo "::error::Tag $TAG: tags are bare semver (1.2.3), not v1.2.3. Delete it and push ${TAG#v}."
+          exit 1
+
+      # A tag cut from a branch that never merged would release content main does not have.
+      - name: Released commit is on main
+        run: |
+          git fetch --no-tags origin main
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "$GITHUB_SHA is an ancestor of origin/main."
+            exit 0
+          fi
+          echo "::error::$GITHUB_SHA is not an ancestor of origin/main. Release only commits that are on main."
+          exit 1
+
+  # The same suite CI runs, on the same commit (github.sha is shared with a called workflow).
+  ci:
+    needs: tag
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Lint recognition.md
-        run: npm run lint
-
-      - name: Assert every generated output matches its source
-        run: npm run check
-
-      - name: Test
-        run: npm test
 
       # THE ORDERING RULE, STRUCTURAL RATHER THAN PROMISED. The job refuses to publish if the
       # current v2-template@latest does not contain the assembled section byte-for-byte. Content
@@ -40,12 +70,13 @@ jobs:
       # it has. This is FORK-5's "content before packaging" turned into a build failure.
       #
       # It reads the TAG, never main: a correct main behind a lagging tag must still refuse,
-      # because creators receive the tag. An unreachable tag also refuses — a gate whose failure
+      # because creators receive the tag. An unreachable tag also refuses. A gate whose failure
       # mode on a fetch error is "proceed" is not a gate.
-      - name: Publish gate — v2-template@latest must already carry the section
+      - name: Publish gate - v2-template@latest must already carry the section
         run: npm run publish-gate
 
-      # - name: Publish
-      #   NOT WIRED. §11's two ordering rules are satisfied as of 2026-09-05; wiring this needs the
-      #   step written, "private": true dropped, and an npm token. Left commented rather than
-      #   removed so the absence is visible beside the gate that guards it.
+      - name: No publish by decision
+        run: |
+          msg="no publish by decision: npm publish is declined and the marketplace is this git repo, so the tag is the release."
+          echo "$msg"
+          echo "### $msg" >> "$GITHUB_STEP_SUMMARY"
