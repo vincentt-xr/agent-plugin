@@ -22,7 +22,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { isMain } from './is-main.mjs';
 
-const ITEMS = [
+export const ITEMS = [
   { n: 1, subject: 'skip, defer, or shortcut a confirmation' },
   { n: 2, subject: 'silence, inference, or a preceding event as consent' },
   { n: 3, subject: 'extend the scope of one of the four pinned moments' },

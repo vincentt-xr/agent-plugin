@@ -60,14 +60,28 @@ test('MEASURED · with the clause arm ON, the SHIPPED source stays clean — no 
   );
 });
 
-test('MEASURED · the arm converts exactly ONE of the three pinned residuals', () => {
+test('MEASURED · every residual\'s clause-arm verdict matches its declaration, by iteration', () => {
+  // Each residual row declares `clauseArmCatches`, so the corpus can grow without editing this
+  // case and cannot silently disagree with itself. The measurement is that the arm converts a
+  // small minority: the residuals it misses read as ordinary prose, which is why the record
+  // refuses to claim this closes the class.
   const residuals = HOSTILE_SOURCES.filter((r) => r.residual);
-  const caught = residuals.filter((r) => clauseArms(r.source).includes('clause-opener'));
-  assert.deepEqual(
-    caught.map((r) => r.row),
-    ['ATTACK_1'],
-    'one of three. The two it does not catch are the ones that read as ordinary prose, which is ' +
-      'exactly why the record refuses to claim this closes the class.',
+  for (const r of residuals) {
+    assert.equal(
+      typeof r.clauseArmCatches,
+      'boolean',
+      `${r.row} is a residual and must declare whether the clause arm catches it`,
+    );
+    assert.equal(
+      clauseArms(r.source).includes('clause-opener'),
+      r.clauseArmCatches,
+      `${r.row} declares clauseArmCatches: ${r.clauseArmCatches} and the arm says otherwise`,
+    );
+  }
+  const caught = residuals.filter((r) => r.clauseArmCatches);
+  assert.ok(
+    caught.length < residuals.length / 2,
+    `the arm converts ${caught.length} of ${residuals.length}; a majority would be a record change`,
   );
 });
 

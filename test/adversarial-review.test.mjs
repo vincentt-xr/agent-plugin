@@ -15,7 +15,12 @@ import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { extractAnswers, unanswered, reviewIsRequired } from '../build/check-adversarial-review.mjs';
+import {
+  extractAnswers,
+  unanswered,
+  reviewIsRequired,
+  ITEMS,
+} from '../build/check-adversarial-review.mjs';
 import { REPO_ROOT } from '../build/assemble.mjs';
 
 const TEMPLATE = readFileSync(join(REPO_ROOT, '.github/pull_request_template.md'), 'utf8');
@@ -185,4 +190,54 @@ test('the template states that both reviews run and that they differ', () => {
   // OVERRIDE. Collapsing them loses the one that owns the residual.
   assert.match(TEMPLATE, /RESTATEMENT/);
   assert.match(TEMPLATE, /OVERRIDE/);
+});
+
+// —— the STRUCTURE, not the wording ————————————————————————————————————————————————
+//
+// The template is NOT a generated artifact: the assembly check does not cover it, and nothing
+// generates it from the script or the script from it. These assertions are the only thing
+// holding the two copies together. The script locates each item by its `**N. ` heading and
+// skips a number it does not list, so a sixth template item would be silently unenforced.
+
+const templateItemNumbers = (body) =>
+  [...body.matchAll(/^\s*\*\*(\d+)\.\s/gm)].map((m) => Number(m[1]));
+
+test('structure · the script enforces exactly five items, numbered 1..5 with no gap', () => {
+  assert.equal(ITEMS.length, 5, 'a sixth entry is a record change, not a script edit');
+  assert.deepEqual(
+    ITEMS.map((i) => i.n),
+    [1, 2, 3, 4, 5],
+    'the script finds each item by its number, so a moved number silently stops matching',
+  );
+});
+
+test('structure · the template\'s item numbers EQUAL the script\'s, so no item is unenforced', () => {
+  const inTemplate = templateItemNumbers(TEMPLATE);
+  assert.equal(inTemplate.length, 5, `the template carries ${inTemplate.length} numbered items`);
+  assert.deepEqual(
+    [...new Set(inTemplate)].sort((a, b) => a - b),
+    ITEMS.map((i) => i.n),
+    'a template item with no script entry is never checked: a blank answer to it passes',
+  );
+});
+
+test('structure · each script subject appears in the template, so a reword lands in both', () => {
+  for (const item of ITEMS) {
+    assert.ok(
+      TEMPLATE.includes(item.subject),
+      `item ${item.n}'s subject "${item.subject}" is not in the template; a failure would name ` +
+        'an item the reviewer is not reading',
+    );
+  }
+});
+
+test('structure · items 3, 4 and 5 carry their widened qualifiers', () => {
+  // PRESENCE of the widening, which is stable, never the full sentence.
+  assert.match(TEMPLATE, /This reaches three shapes, not one/, 'item 3 widened to three shapes');
+  assert.match(TEMPLATE, /about the referent, not the spelling/, 'item 4 is about the referent');
+  assert.match(
+    TEMPLATE,
+    /attribute to them a goal, destination, intention, or preference/,
+    'item 5 reaches attributed goals, not only asserted decisions',
+  );
 });

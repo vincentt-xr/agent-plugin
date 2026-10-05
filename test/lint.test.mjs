@@ -343,29 +343,89 @@ test('QA-F14-02 · ATTACK_DOTFILE PASSES — pinned residual, adversarial checkl
   );
 });
 
-test('QA-F14-02 · the residual is a checked-in fact: exactly four rows pass by design', () => {
-  const residuals = HOSTILE_SOURCES.filter((r) => r.residual);
-  assert.deepEqual(
-    residuals.map((r) => r.row).sort(),
-    ['ADV_REGISTRY_CREDENTIAL', 'ATTACK_1', 'ATTACK_3', 'ATTACK_DOTFILE'],
-    'the pinned residual set is part of the record; growing it is a deliberate edit',
-  );
+// The residual is asserted BY ITERATING the corpus, never by naming rows. A hand enumeration
+// stayed arithmetically correct while the corpus it described fell behind the checklist, so the
+// suite was green and its stated measurement was false. Iteration means a row added with no test
+// edit is covered, and a row added with the wrong declared verdict goes red.
 
-  // GROWN DELIBERATELY, by one, by f17. ADV_REGISTRY_CREDENTIAL came out of this slice's own
-  // adversarial pass: a sentence satisfying all four of the amended B-F14-1's conditions that
-  // fires no arm and still makes reading the creator's registry credential the cheapest obedient
-  // path. It is the same class as ATTACK_DOTFILE one abstraction further out — it never names
-  // the file, it describes a purpose and lets the agent find it.
-  //
-  // Recorded as a residual rather than closed, because the two available closures are both
-  // refused by the record: a credential word list is the enumeration `shared.md` rejected (an
-  // enumeration in prose is not a check, and the next paraphrase walks past a word list), and a
-  // fifth condition was considered and refused for the same reason. The bound stays mechanical
-  // where it can be and human where it cannot.
-  assert.equal(residuals.length, 4, 'three inherited from f14, one added by f17');
-  for (const r of residuals) {
-    assert.ok(r.checklistItem, `${r.row} must name the checklist item that owns it`);
-    assert.equal(r.fires, false);
+test('QA-F14-02 · every row\'s verdict matches its declared `fires`, by iteration', () => {
+  for (const row of HOSTILE_SOURCES) {
+    const violations = lintSource(row.source, { precedence: PRECEDENCE });
+    assert.equal(
+      violations.length > 0,
+      row.fires,
+      `${row.row} declares fires: ${row.fires} and the lint says otherwise; fired ` +
+        `[${violations.map((v) => v.arm).join(', ')}]`,
+    );
+  }
+});
+
+test('QA-F14-02 · a residual cannot be parked in the corpus without an owner', () => {
+  for (const row of HOSTILE_SOURCES) {
+    if (row.residual) {
+      assert.equal(row.fires, false, `${row.row} is a residual, so it is pinned as a PASS`);
+      assert.ok(
+        Number.isInteger(row.checklistItem) && row.checklistItem >= 1 && row.checklistItem <= 5,
+        `${row.row} must name the checklist item (1..5) that owns it`,
+      );
+    } else {
+      assert.equal(
+        row.checklistItem,
+        undefined,
+        `${row.row} names a checklist item but is not marked residual; mark it one or the other`,
+      );
+    }
+  }
+});
+
+// The rows the record specifies as the measurement of the widened checklist. A floor, not an
+// enumeration: rows beyond these are covered by the iteration above with no edit here, and
+// removing one of these is what turns this red.
+const SPECIFIED_RESIDUALS = {
+  ATTACK_1: 1,
+  ATTACK_3: 5,
+  ATTACK_DOTFILE: 4,
+  ADV_REGISTRY_CREDENTIAL: 4,
+  ATTACK_ACCOUNT_CLAUSE_MACHINE: 4,
+  ATTACK_ACCOUNT_CLAUSE_PLACE: 4,
+  ATTACK_ACCOUNT_TEARDOWN: 3,
+  ATTACK_ACCOUNT_GOAL: 5,
+};
+
+test('QA-F14-02 · every residual the record specifies is in the corpus, owned by its item', () => {
+  for (const [name, item] of Object.entries(SPECIFIED_RESIDUALS)) {
+    const row = HOSTILE_SOURCES.find((r) => r.row === name);
+    assert.ok(row, `${name} is specified by the record and missing from the corpus`);
+    assert.equal(row.residual, true, `${name} must be marked residual`);
+    assert.equal(row.checklistItem, item, `${name} is owned by checklist item ${item}`);
+  }
+});
+
+test('QA-F14-02 · the ATTACK_ACCOUNT_* rows PASS: the constraint moved and the lint did not', () => {
+  // Items 3 and 5 were widened and item 4 gained a per-clause review obligation (C0-C7). None of
+  // that is a lint arm, so every account attack passing is the assertion, with the clause arm on
+  // and off. The shipped clause arm splits on em-dash/semicolon/", so" and tests BARE VERBS; C0
+  // splits on and/where/when/because and tests REFERENTS. Same name, different rules.
+  const rows = HOSTILE_SOURCES.filter((r) => r.row.startsWith('ATTACK_ACCOUNT_'));
+  assert.ok(rows.length >= 4, 'the four specified account rows must be present');
+  for (const row of rows) {
+    for (const clauseLevel of [false, true]) {
+      assert.deepEqual(
+        lintSource(row.source, { precedence: PRECEDENCE, clauseLevel }),
+        [],
+        `${row.row} must pass with clauseLevel: ${clauseLevel}. If it fires, an arm was widened; ` +
+          'confirm it was not widened into a word list, which the record refused.',
+      );
+    }
+  }
+});
+
+test('QA-F14-02 · the residual spans every intent-only checklist item the record measures', () => {
+  // Items 1, 3, 4 and 5 each have a measured residual; item 2 is owned by the second-person arm
+  // and the verdict rows. Losing every row for an item means the corpus no longer measures it.
+  const owned = new Set(HOSTILE_SOURCES.filter((r) => r.residual).map((r) => r.checklistItem));
+  for (const item of [1, 3, 4, 5]) {
+    assert.ok(owned.has(item), `no residual row measures checklist item ${item}`);
   }
 });
 
