@@ -31,6 +31,21 @@ jobs:
       - name: Release pin names a real release tag
         run: node build/check-pin.mjs
 
+      # An empty pin is the pre-first-release state only. Once any release tag exists, an empty pin
+      # hands creators the tip of main. Skipped on the tag's own run (the release workflow calls
+      # this one), because the pin PR can only open after that run passes.
+      - name: An empty pin is refused once a release tag exists
+        if: github.ref_type != 'tag'
+        run: |
+          TAGS=$(git ls-remote --tags origin | awk '{print $2}' | grep -E '^refs/tags/[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          PINNED=$(node -p "require('./release-pin.json').tag ?? ''")
+          if [[ -z "$TAGS" || -n "$PINNED" ]]; then
+            echo "Pin state is consistent with the release tags."
+            exit 0
+          fi
+          echo "::error::release-pin.json is empty, but release tags exist: $(echo $TAGS | sed 's#refs/tags/##g'). Merge the pin PR the release workflow opened, or run node build/pin-release.mjs <tag> <sha>."
+          exit 1
+
       # QA-F14-08(a) — the recognition cell of the subtractive table — asserts that a scaffolded
       # tree's AGENTS.md carries this repo's assembled section BYTE-FOR-BYTE.
       #

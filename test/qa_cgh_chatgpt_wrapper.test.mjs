@@ -28,6 +28,12 @@ import { PINNED_ACTION_IDS, SECTION_CEILING } from '../build/pins.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Read raw rather than through the renderer's parser, so the expectation is not the code under test.
+function readPin() {
+  const { tag, sha } = JSON.parse(readFileSync(join(REPO_ROOT, 'release-pin.json'), 'utf8'));
+  return tag === null && sha === null ? null : { tag, sha };
+}
+
 // —— QA-CGH-01 · discovered, and the manifest is the union ————————————————————
 
 test('QA-CGH-01 · the chatgpt wrapper is discovered from hosts/, not listed in a test', () => {
@@ -149,8 +155,23 @@ test('QA-CGH-04 · the two marketplace manifests point at different builds', () 
   // resolve — and would serve dist/claude-code, whose commands belong to a host this one is not.
   // The failure is silent: an install succeeds and the creator gets the wrong build.
   assert.equal(chatgpt.plugins[0].source.path, './dist/chatgpt');
-  assert.equal(claude.plugins[0].source, './dist/claude-code');
-  assert.notEqual(chatgpt.plugins[0].source.path, claude.plugins[0].source);
+
+  // Pinned, the Claude Code entry is a git-subdir source fixed to the release commit; unpinned
+  // (before the first release) it is the relative path.
+  const pin = readPin();
+  const claudeSource = claude.plugins[0].source;
+  if (pin) {
+    assert.equal(claudeSource.source, 'git-subdir');
+    assert.equal(claudeSource.path, 'dist/claude-code');
+    assert.equal(claudeSource.ref, pin.tag);
+    assert.equal(claudeSource.sha, pin.sha);
+  } else {
+    assert.equal(claudeSource, './dist/claude-code');
+  }
+
+  const claudePath = typeof claudeSource === 'string' ? claudeSource : claudeSource.path;
+  const norm = (p) => p.replace(/^\.\//, '');
+  assert.notEqual(norm(chatgpt.plugins[0].source.path), norm(claudePath));
 });
 
 test('QA-CGH-04 · the chatgpt marketplace description matches the wrapper it names', () => {
@@ -230,7 +251,9 @@ test('QA-CGH-06 · the chatgpt marketplace entry names the version the host comp
   assert.equal(marketplace.plugins[0].version, pkg.version);
 
   const claude = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin/marketplace.json'), 'utf8'));
-  assert.equal(claude.plugins[0].version, pkg.version);
+  // Pinned, the Claude Code entry describes what installs (the tag), not what main holds.
+  const pin = readPin();
+  assert.equal(claude.plugins[0].version, pin ? pin.tag : pkg.version);
 });
 
 // —— QA-CGH-07 · the four moments are reachable inside the plugin ——————————————
