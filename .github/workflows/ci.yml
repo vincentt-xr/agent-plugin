@@ -26,6 +26,11 @@ jobs:
       - name: Assert every generated output matches its source
         run: npm run check
 
+      # What a creator installs is the commit the pin names, so a pin that is not a real release
+      # tag would install a commit no release workflow checked.
+      - name: Release pin names a real release tag
+        run: node build/check-pin.mjs
+
       # QA-F14-08(a) — the recognition cell of the subtractive table — asserts that a scaffolded
       # tree's AGENTS.md carries this repo's assembled section BYTE-FOR-BYTE.
       #

@@ -6,6 +6,10 @@ name: Release
 # a tag is the release and nothing is pushed to a registry. The job summary says so on every run,
 # so a green run is never read as "published to npm". Wiring a publish later needs the step
 # written, "private": true dropped from package.json, and an npm token.
+#
+# Claude Code reads the marketplace entry from main, and the entry is pinned to a release tag
+# (release-pin.json). A tag that passes every job below opens the PR that moves the pin to it;
+# merging that PR is what ships the release to creators.
 
 on:
   push:
@@ -33,6 +37,20 @@ jobs:
             exit 0
           fi
           echo "::error::Tag $TAG: tags are bare semver (1.2.3), not v1.2.3. Delete it and push ${TAG#v}."
+          exit 1
+
+      # The pinned marketplace entry states the tag name as the version, so the two must agree.
+      - name: Tag matches package.json version
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$TAG" == "$VERSION" ]]; then
+            echo "Tag $TAG matches package.json."
+            exit 0
+          fi
+          echo "::error::Tag $TAG does not match package.json version $VERSION. Tag the commit that carries $TAG."
           exit 1
 
       # A tag cut from a branch that never merged would release content main does not have.
@@ -80,3 +98,41 @@ jobs:
           msg="no publish by decision: npm publish is declined and the marketplace is this git repo, so the tag is the release."
           echo "$msg"
           echo "### $msg" >> "$GITHUB_STEP_SUMMARY"
+
+  # Opens a PR on main that pins the marketplace entry to this tag. A PR rather than a push,
+  # because main takes changes only through one. GITHUB_TOKEN PRs trigger no workflows, so CI
+  # does not run on it; it changes only release-pin.json and marketplace.json.
+  pin:
+    needs: release
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Open the pin PR
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="chore/pin-$TAG"
+          node build/pin-release.mjs "$TAG" "$GITHUB_SHA"
+          if git diff --quiet; then
+            echo "main is already pinned to $TAG."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          git commit -am "chore: pin the Claude Code plugin to $TAG"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: pin the Claude Code plugin to $TAG" \
+            --body "Points the Claude Code marketplace entry at release $TAG ($GITHUB_SHA). Merging this ships $TAG to creators."

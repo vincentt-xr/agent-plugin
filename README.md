@@ -62,6 +62,17 @@ The release job refuses to publish unless the current `v2-template@latest` alrea
 assembled grounding section byte-for-byte. Content reaches creators who cannot install before a
 package exists to install, always, because the package cannot publish until it has.
 
+## What creators install
+
+Claude Code reads `.claude-plugin/marketplace.json` from `main`, so the entry is pinned to a
+release: `release-pin.json` names a tag and its commit, and the entry is a `git-subdir` source
+fixed to that commit. Content merged to `main` reaches nobody until it is tagged.
+
+To release, bump `package.json`, merge, and push a bare semver tag on that commit. When the
+release workflow passes, it opens a PR that moves the pin (`node build/pin-release.mjs <tag> <sha>`
+does the same by hand). Merging that PR is what ships the release. CI fails a pin whose tag does
+not exist or points elsewhere.
+
 ## License
 
 MIT. See `LICENSE`.

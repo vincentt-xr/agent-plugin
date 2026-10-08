@@ -315,9 +315,62 @@ export function renderClaudeCodeCommands(source) {
   });
 }
 
+// The release a creator installs. Claude Code reads marketplace.json from the default branch, so a
+// relative `source` hands creators the tip of main, where no tag-time check has run. With a pin,
+// the entry is a `git-subdir` source fixed to the release tag's commit: content merged to main
+// reaches nobody until a tag passes the release workflow, which then opens the PR that moves this.
+//
+// `tag: null` is the state before the first release only. The entry falls back to the relative
+// path and CI warns, because there is no tag yet to pin.
+export const RELEASE_PIN_PATH = join(REPO_ROOT, 'release-pin.json');
+export const PLUGIN_GIT_URL = `${HOMEPAGE}.git`;
+
+export function parseReleasePin(json) {
+  let pin;
+  try {
+    pin = JSON.parse(json);
+  } catch (err) {
+    throw new Error(`release-pin.json is not valid JSON: ${err.message}`);
+  }
+  if (pin === null || typeof pin !== 'object') {
+    throw new Error('release-pin.json must be an object with `tag` and `sha`.');
+  }
+  const { tag, sha } = pin;
+  if (tag === null && sha === null) return null;
+  if (typeof tag !== 'string' || !/^\d+\.\d+\.\d+$/.test(tag)) {
+    throw new Error(`release-pin.json: tag ${JSON.stringify(tag)} is not a bare semver release tag.`);
+  }
+  if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) {
+    throw new Error(`release-pin.json: sha ${JSON.stringify(sha)} is not a full lowercase commit SHA.`);
+  }
+  return { tag, sha };
+}
+
+export function readReleasePin() {
+  if (!existsSync(RELEASE_PIN_PATH)) {
+    throw new Error(
+      'assembly failed: release-pin.json is missing. It names the release creators install; ' +
+        'write {"tag": null, "sha": null} only if no release has been cut.',
+    );
+  }
+  return parseReleasePin(readFileSync(RELEASE_PIN_PATH, 'utf8'));
+}
+
+export function renderClaudeCodeSource(pin) {
+  if (!pin) return `./${CLAUDE_CODE_DIR}`;
+  return {
+    source: 'git-subdir',
+    url: PLUGIN_GIT_URL,
+    path: CLAUDE_CODE_DIR,
+    ref: pin.tag,
+    // Checked out in preference to `ref`, so moving or deleting the tag does not move what installs.
+    sha: pin.sha,
+  };
+}
+
 // The marketplace entry. `source` points at the generated tree rather than the repo root, so the
 // thing a creator installs is an output and never the authored source beside it.
-export function renderClaudeCodeMarketplace(source) {
+export function renderClaudeCodeMarketplace(source, pin = readReleasePin()) {
   const marketplace = {
     name: 'vincentt-xr',
     owner: AUTHOR,
@@ -328,13 +381,17 @@ export function renderClaudeCodeMarketplace(source) {
     plugins: [
       {
         name: CLAUDE_CODE_PLUGIN_NAME,
-        source: `./${CLAUDE_CODE_DIR}`,
+        source: renderClaudeCodeSource(pin),
         // The version the HOST COMPARES AGAINST. Its absence was not cosmetic: with no version
         // in the entry, the plugin panel fell back to a constant, so an installed copy and a
         // marketplace three content commits ahead both read `0.1.0` and the panel said "On
         // latest version" with Update greyed out. A creator could not learn from the product
         // that shipped text had changed. Reported from a real session.
-        version: PACKAGE_VERSION,
+        //
+        // Pinned, it is the TAG's version: main moves ahead of the release between tags, and the
+        // entry must describe what installs, not what main holds. The release workflow refuses a
+        // tag that differs from package.json, so the tag name is that commit's version.
+        version: pin ? pin.tag : PACKAGE_VERSION,
         description: renderLongDescription(source),
         author: AUTHOR,
         license: 'MIT',
