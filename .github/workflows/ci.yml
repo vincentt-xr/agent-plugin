@@ -100,11 +100,13 @@ jobs:
           node-version: '22'
 
       - name: Collect the changed files and both sides of package.json
+        env:
+          BASE: ${{ github.base_ref }}
         run: |
-          git fetch --quiet origin "${{ github.base_ref }}"
-          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed-files.txt
+          git fetch --quiet origin "$BASE"
+          git diff --name-only "origin/${BASE}...HEAD" > /tmp/changed-files.txt
           cat /tmp/changed-files.txt
-          git show "origin/${{ github.base_ref }}:package.json" > /tmp/base-package.json
+          git show "origin/${BASE}:package.json" > /tmp/base-package.json
           cp package.json /tmp/head-package.json
 
       - name: Shipped content that changed has moved the version
@@ -133,9 +135,11 @@ jobs:
           node-version: '22'
 
       - name: Collect the changed files
+        env:
+          BASE: ${{ github.base_ref }}
         run: |
-          git fetch --quiet origin "${{ github.base_ref }}"
-          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed-files.txt
+          git fetch --quiet origin "$BASE"
+          git diff --name-only "origin/${BASE}...HEAD" > /tmp/changed-files.txt
           cat /tmp/changed-files.txt
 
       - name: Capture the PR description
