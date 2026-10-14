@@ -21,6 +21,7 @@ export const END_MARKER = '<!-- END recognition -->';
 
 export const SOURCE_PATH = join(REPO_ROOT, 'recognition.md');
 export const PRECEDENCE_PATH = join(REPO_ROOT, 'precedence.txt');
+export const DISCLOSURE_PATH = join(REPO_ROOT, 'disclosure.md');
 
 // The published package name. The subtractive precondition (§9.2) resolves this from our own
 // release metadata — it is a fact about what WE publish, never a probe of what is running.
@@ -277,6 +278,29 @@ export function renderClaudeCodePlugin(source) {
     commands: './commands/',
   };
   return `${JSON.stringify(plugin, null, 2)}\n`;
+}
+
+// The plugin directory lists the README in the plugin folder as the listing text, refuses a folder
+// without one, and its security scan expects the README to say what the plugin runs and sends.
+// Every part is read from a file another check already governs: the description from
+// recognition.md, the disclosure from disclosure.md (linted), and the install section from the
+// host README (under the wrapper ceiling). Nothing here is authored.
+export function renderClaudeCodeReadme(source, disclosure, hostReadme) {
+  const install = hostReadme.replace(/^#[^\n]*\n+/, '').trim();
+  return [
+    '# Vincentt',
+    '',
+    renderLongDescription(source),
+    '',
+    '## What this plugin runs and sends',
+    '',
+    disclosure.trim(),
+    '',
+    '## Install',
+    '',
+    install,
+    '',
+  ].join('\n');
 }
 
 // —— the commands ————————————————————————————————————————————————————————————
@@ -643,6 +667,14 @@ const WRAPPER_OUTPUTS = Object.freeze({
     {
       path: join(REPO_ROOT, CLAUDE_CODE_DIR, '.claude-plugin/plugin.json'),
       content: renderClaudeCodePlugin(source),
+    },
+    {
+      path: join(REPO_ROOT, CLAUDE_CODE_DIR, 'README.md'),
+      content: renderClaudeCodeReadme(
+        source,
+        readFileSync(DISCLOSURE_PATH, 'utf8'),
+        readFileSync(join(REPO_ROOT, 'hosts/claude-code/README.md'), 'utf8'),
+      ),
     },
     ...renderClaudeCodeCommands(source).map((c) => ({
       path: join(REPO_ROOT, CLAUDE_CODE_DIR, `commands/${c.name}.md`),

@@ -7,7 +7,9 @@ only in manifest format, which is what stops them drifting from each other.
 
 A manifest, a name, a description, an install instruction, a license, and a docs link.
 
-It may **not** contain a sentence about the product's behavior. Past a hard ceiling of
+It may **not** contain a sentence about the product's behavior, with one exception: a wrapper
+listed in a curated directory renders `disclosure.md` (what the plugin runs and sends) into its
+generated README. That file is shared by every host and held to the source lint. Past a hard ceiling of
 non-generated content (`WRAPPER_NON_GENERATED_WORD_CEILING` in `build/pins.mjs`) the lint fails.
 The description is generated from `recognition.md`'s first paragraph, never hand-written, because
 it is what a host matches against and is the closest thing here to platform-authored behavior.

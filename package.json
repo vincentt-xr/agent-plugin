@@ -1,6 +1,6 @@
 {
   "name": "@vincentt-xr/agent-plugin",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "description": "The Vincentt recognition mapping, and the wrappers that package it for agent hosts.",
   "license": "MIT",
@@ -22,6 +22,7 @@
   "files": [
     "recognition.md",
     "precedence.txt",
+    "disclosure.md",
     "actions.yml",
     "hosts/"
   ]

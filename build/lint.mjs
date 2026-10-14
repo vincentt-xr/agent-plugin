@@ -612,6 +612,21 @@ export function lintWrapperCeiling(nonGeneratedText, ceiling) {
   ];
 }
 
+// The disclosure ships in a directory listing nothing here can recall, so it is held to the same
+// syntactic arms as recognition.md: a verb, flag, path or version named here is pinned forever.
+export function lintDisclosure(text) {
+  const violations = [
+    ...lintFlags(text),
+    ...lintExitCodes(text),
+    ...lintFilePaths(text),
+    ...lintSemver(text),
+    ...lintComponents(text),
+    ...lintVerbs(text),
+    ...lintSecondPerson(text),
+  ];
+  return violations.map((v) => ({ ...v, message: `disclosure.md: ${v.message}` }));
+}
+
 export function lintFile(path, options) {
   return lintSource(readFileSync(path, 'utf8'), options);
 }
@@ -643,6 +658,11 @@ export function runLintCli() {
     : undefined;
 
   const violations = lintSource(source, { actions, precedence });
+
+  const disclosurePath = join(root, 'disclosure.md');
+  if (existsSync(disclosurePath)) {
+    violations.push(...lintDisclosure(readFileSync(disclosurePath, 'utf8')));
+  }
 
   // The wrapper ceiling counts only NON-generated files: the generated SKILL.md and manifest are
   // recognition.md's own words, and counting them would turn the ceiling into a limit on the
