@@ -478,15 +478,23 @@ export const BRAND_COLOR = '#1e4492';
 //
 // The mapping is keyed by PINNED_ACTION_ID, so a prompt cannot exist for a moment recognition.md
 // does not have, and a fifth moment is a record change before it is ever a fifth row here.
+//
+// The OpenAI directory takes at most CHATGPT_PROMPT_LIMIT prompts, so only the moments that open
+// a session get a row. `stop` and `update` stay reachable as skills and capabilities; they lose
+// only the click-to-speak row. The wording follows the landing page ("camera experience", "your
+// files"), not the source's "AR app".
+export const CHATGPT_PROMPT_LIMIT = 3;
 const STARTER_PROMPT_FOR_ID = Object.freeze({
-  start: 'Help me start a new AR app.',
-  resume: 'Help me pick up a project I started.',
-  phone: 'Show me what I am building on my phone.',
-  stop: 'Stop the preview I have running.',
-  // The person's own voice, and it carries no version and no package name — the sentence a
-  // creator says, which is what the moment recognises.
-  update: 'Bring my Vincentt packages up to date.',
+  start: 'Help me build a camera experience from my files.',
+  resume: 'Help me pick up a camera experience I started.',
+  phone: 'Show what I am building on my phone.',
 });
+
+// The directory caps the listing subtitle at 30 characters, which no sentence of recognition.md
+// fits. This is the one authored listing string; it appears only on a host with a subtitle field,
+// and the generated `description` still carries the matching weight.
+export const CHATGPT_SHORT_DESCRIPTION_LIMIT = 30;
+export const CHATGPT_SHORT_DESCRIPTION = 'Build camera experiences';
 
 export function renderChatgptSkill(source, precedence) {
   const description = renderDescription(source);
@@ -544,7 +552,7 @@ export function renderChatgptPlugin(source) {
     skills: './skills/',
     interface: {
       displayName: 'Vincentt',
-      shortDescription: renderDescription(source),
+      shortDescription: CHATGPT_SHORT_DESCRIPTION,
       // The listing shows this as a BLOCK, so it gets the whole paragraph — the same split the
       // Claude Code plugin panel gets, and for the same reason.
       longDescription: renderLongDescription(source),
@@ -567,7 +575,9 @@ export function renderChatgptPlugin(source) {
       // the pinned ids. A hand-written list here would be a fifth pinned surface in a third
       // party's directory, which is the thing FORK-A already refused once.
       capabilities: PINNED_ACTION_IDS.map((id) => LABEL_FOR_ID[id]),
-      defaultPrompt: PINNED_ACTION_IDS.map((id) => STARTER_PROMPT_FOR_ID[id]),
+      defaultPrompt: PINNED_ACTION_IDS.filter((id) => id in STARTER_PROMPT_FOR_ID).map(
+        (id) => STARTER_PROMPT_FOR_ID[id],
+      ),
     },
   };
   return `${JSON.stringify(plugin, null, 2)}\n`;

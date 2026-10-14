@@ -22,6 +22,9 @@ import {
   readSource,
   CHATGPT_DIR,
   CHATGPT_SKILL_NAME,
+  CHATGPT_PROMPT_LIMIT,
+  CHATGPT_SHORT_DESCRIPTION,
+  CHATGPT_SHORT_DESCRIPTION_LIMIT,
 } from '../build/assemble.mjs';
 import { parseRecognition } from '../build/parse.mjs';
 import { PINNED_ACTION_IDS, SECTION_CEILING } from '../build/pins.mjs';
@@ -80,8 +83,21 @@ test('QA-CGH-02 · description is byte-identical to what the other wrappers carr
   // The one field with real weight — it is what the host matches a person's words against, so
   // the three wrappers cannot be allowed to drift on it.
   assert.equal(plugin.description, renderDescription(source));
-  assert.equal(plugin.interface.shortDescription, renderDescription(source));
   assert.equal(plugin.interface.longDescription, renderLongDescription(source));
+});
+
+test('QA-CGH-06 · the listing subtitle and starter prompts fit the directory limits', () => {
+  const { interface: iface } = JSON.parse(renderChatgptPlugin(readSource()));
+
+  // The OpenAI directory refuses a submission past either limit, and nothing else here runs its
+  // validator, so the limits are asserted on the rendered manifest.
+  assert.equal(iface.shortDescription, CHATGPT_SHORT_DESCRIPTION);
+  assert.ok(iface.shortDescription.length <= CHATGPT_SHORT_DESCRIPTION_LIMIT, 'subtitle is 30 characters max');
+  assert.ok(iface.displayName.length <= CHATGPT_SHORT_DESCRIPTION_LIMIT, 'display name is 30 characters max');
+  assert.ok(iface.defaultPrompt.length <= CHATGPT_PROMPT_LIMIT, 'at most 3 starter prompts');
+  for (const prompt of iface.defaultPrompt) {
+    assert.ok(prompt.length <= 128, `prompt is 128 characters max: "${prompt}"`);
+  }
 });
 
 test('QA-CGH-02 · the skill body is byte-identical to the claude-code wrapper body', () => {
@@ -111,11 +127,12 @@ test('QA-CGH-02 · a hand-edit of the generated manifest is detectable', () => {
 
 // —— QA-CGH-03 · every starter prompt resolves ————————————————————————————————
 
-test('QA-CGH-03 · there is exactly one starter prompt per pinned action, and no fifth row', () => {
+test('QA-CGH-03 · there is at most one starter prompt per pinned action, and no fifth row', () => {
   const plugin = JSON.parse(renderChatgptPlugin(readSource()));
   const prompts = plugin.interface.defaultPrompt;
 
-  assert.equal(prompts.length, PINNED_ACTION_IDS.length);
+  assert.ok(prompts.length > 0);
+  assert.ok(prompts.length <= PINNED_ACTION_IDS.length);
   assert.ok(prompts.length <= SECTION_CEILING, 'a fifth row would be a fifth moment');
   assert.equal(new Set(prompts).size, prompts.length, 'no duplicate rows');
 });
@@ -124,9 +141,9 @@ test('QA-CGH-03 · the prompt set is keyed by the pinned ids, so it cannot outgr
   const doc = parseRecognition(readSource());
   const plugin = JSON.parse(renderChatgptPlugin(readSource()));
 
-  // Tripwire (b): a prompt may not name a moment the grounding lacks. The prompts are derived
-  // from the pinned ids, and the ids resolve to sections — so the count is the binding assertion.
-  assert.equal(plugin.interface.defaultPrompt.length, doc.sections.length);
+  // Tripwire (b): a prompt may not name a moment the grounding lacks. The prompts are a subset of
+  // the pinned ids, and the ids resolve to sections, so the count cannot pass the section count.
+  assert.ok(plugin.interface.defaultPrompt.length <= doc.sections.length);
 });
 
 test('QA-CGH-03 · no starter prompt names a flag, a path, a URL, or an exit code', () => {
