@@ -39,6 +39,19 @@ test('QA-F14-16 · the README is generated, and carries the disclosure verbatim'
   assert.ok(output.content.includes(disclosure), 'the disclosure must appear unedited');
 });
 
+// The directory takes the listing icon only the first time a submission is saved, so a missing or
+// rejected icon cannot be fixed afterwards. Same image as the ChatGPT logo, so the hosts show one mark.
+test('QA-F14-18 · the Claude Code plugin folder ships the directory icon', () => {
+  const icon = readFileSync(join(REPO_ROOT, CLAUDE_CODE_DIR, '.claude-plugin/icon.png'));
+  assert.equal(icon.subarray(1, 4).toString('latin1'), 'PNG');
+  const width = icon.readUInt32BE(16);
+  const height = icon.readUInt32BE(20);
+  assert.equal(width, height, 'the directory requires a square icon');
+  assert.ok(width >= 512 && width <= 2048, `icon is ${width}px; the directory requires 512 to 2048`);
+  assert.ok(icon.length < 2 * 1024 * 1024, 'the directory requires under 2 MB');
+  assert.ok(icon.equals(readFileSync(join(REPO_ROOT, 'dist/chatgpt/assets/logo.png'))));
+});
+
 test('QA-F14-17 · the disclosure is held to the source lint arms', () => {
   const shipped = readFileSync(join(REPO_ROOT, 'disclosure.md'), 'utf8');
   assert.deepEqual(lintDisclosure(shipped), []);
