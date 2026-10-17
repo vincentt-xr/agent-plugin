@@ -18,10 +18,10 @@
         "source": "git-subdir",
         "url": "https://github.com/vincentt-xr/agent-plugin.git",
         "path": "dist/claude-code",
-        "ref": "0.4.4",
-        "sha": "53b689db42c1eac13cf5296c622185fc4c548ed8"
+        "ref": "0.4.5",
+        "sha": "6b6ee02f1bacefbdb1f2fce2f851216d0a720dfc"
       },
-      "version": "0.4.4",
+      "version": "0.4.5",
       "description": "Vincentt is a platform for building AR apps that run in a phone's browser. The work happens in a project folder on this machine, and the project's own agent contract describes how that work is done.",
       "author": {
         "name": "Vincentt",
