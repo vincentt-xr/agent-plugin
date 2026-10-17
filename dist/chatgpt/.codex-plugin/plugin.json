@@ -1,6 +1,6 @@
 {
   "name": "vincentt",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Vincentt is a platform for building AR apps that run in a phone's browser.",
   "author": {
     "name": "Vincentt",
@@ -12,7 +12,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Vincentt",
-    "shortDescription": "Vincentt is a platform for building AR apps that run in a phone's browser.",
+    "shortDescription": "Build camera experiences",
     "longDescription": "Vincentt is a platform for building AR apps that run in a phone's browser. The work happens in a project folder on this machine, and the project's own agent contract describes how that work is done.",
     "developerName": "Vincentt",
     "category": "Creativity",
@@ -28,11 +28,9 @@
       "Bring packages up to date"
     ],
     "defaultPrompt": [
-      "Help me start a new AR app.",
-      "Help me pick up a project I started.",
-      "Show me what I am building on my phone.",
-      "Stop the preview I have running.",
-      "Bring my Vincentt packages up to date."
+      "Help me build a camera experience from my files.",
+      "Help me pick up a camera experience I started.",
+      "Show what I am building on my phone."
     ]
   }
 }
