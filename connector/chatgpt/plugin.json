@@ -1,0 +1,102 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "vincentt-app",
+  "version": "1.0.0",
+  "description": "Make and publish camera experiences that run in a phone's browser, from a ChatGPT conversation, through your Vincentt account.",
+  "author": {
+    "name": "Vincentt",
+    "email": "hello@vincentt.studio",
+    "url": "https://vincentt.studio"
+  },
+  "homepage": "https://vincentt.studio/ai-apps",
+  "repository": "https://github.com/vincentt-xr/agent-plugin",
+  "license": "MIT",
+  "keywords": ["ar", "camera", "face filter", "webar", "design"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Vincentt",
+        "shortDescription": "Phone AR from your chat",
+        "longDescription": "Vincentt turns a conversation into a camera experience that runs in a phone's browser: face filters, try-ons, AR scenes and interactive campaigns. The people who use them need no app.\n\nConnect once with your Vincentt account. ChatGPT then works on a real Vincentt project for you:\n\n- Create a project and save changes as numbered versions. Every save is checked, nothing is overwritten, and any earlier version can be restored.\n- Open the project in the Vincentt editor to see it running, change images and text, leave comments and publish.\n- Get a private preview link with a QR code, and try the experience on your own phone.\n- Read errors and feedback from phones, including testers' screenshots, so ChatGPT can fix problems.\n- Create a short-lived test link to share, with an optional passcode.\n- Publish to the project's web address. The first publish of each project waits for your approval in the Vincentt console.\n\nChatGPT reads Vincentt's product documentation through the app: how projects are laid out, the camera and tracking components, and how previews and publishing work. The documentation is built into the app and matched to your project's version.\n\nThe app can never delete projects or files, change members, plans or billing, or end other people's test links. You can disconnect it from your Vincentt account settings at any time, and workspace owners can block it from their workspace.\n\nAvailable on every Vincentt plan, including Free.",
+        "developerName": "Vincentt",
+        "category": "Creativity",
+        "capabilities": [
+          "Create camera experience projects",
+          "Save and restore versions",
+          "Preview on a phone with a QR code",
+          "Read phone errors and tester feedback",
+          "Create passcode test links",
+          "Publish with owner approval"
+        ],
+        "websiteURL": "https://vincentt.studio",
+        "supportURL": "https://vincentt.studio/ai-apps",
+        "privacyPolicyURL": "https://vincentt.studio/privacy",
+        "termsOfServiceURL": "https://vincentt.studio/terms",
+        "defaultPrompt": [
+          "Make a face filter that puts gold sunglasses on me and show me a QR code to try it.",
+          "My preview is blank on my phone. Read the phone reports and fix it.",
+          "Create a test link for my latest version with the passcode \"launch\"."
+        ],
+        "brandColor": "#1E4492",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png"
+      },
+      "onboardingSkill": "./skills/get-started/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "List the person's projects",
+              "prompt": "List my Vincentt projects.",
+              "tools_triggered": "list_projects",
+              "expected_behavior": "Names the test account's workspaces and their projects, including Gold Sunglasses Filter."
+            },
+            {
+              "description": "Create a project",
+              "prompt": "Create a new Vincentt project called Test Filter in my workspace.",
+              "tools_triggered": "list_projects, create_project, read_project",
+              "expected_behavior": "Creates Test Filter at version 1 from the standard starter and gives its Vincentt editor link."
+            },
+            {
+              "description": "Change and save",
+              "prompt": "Change the starter so the text says Hello and save it.",
+              "tools_triggered": "read_project, save_files",
+              "expected_behavior": "Saves a new version based on the version it read, reports that the check passed, and gives the editor link."
+            },
+            {
+              "description": "Preview on a phone",
+              "prompt": "Give me a QR code to try it on my phone.",
+              "tools_triggered": "get_preview",
+              "expected_behavior": "Shows a private preview link and a QR code image for the newest version that passed its check."
+            },
+            {
+              "description": "Publish with approval",
+              "prompt": "Publish it.",
+              "tools_triggered": "publish",
+              "expected_behavior": "For a never-published project, returns an approval link and asks the person to open it; nothing is live until they approve. For an approved project, gives the public address."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unrelated request",
+              "prompt": "Write me a poem about autumn."
+            },
+            {
+              "description": "Unsupported deletion",
+              "prompt": "Delete my project Test Filter."
+            },
+            {
+              "description": "Unsupported member change",
+              "prompt": "Add alex@example.com to my workspace as an admin."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Vincentt does not sell products or take payments through this app."
+      },
+      "publication": {
+        "release_notes": "First release: create, save, preview, test-link and publish Vincentt camera experiences from ChatGPT."
+      }
+    }
+  }
+}
