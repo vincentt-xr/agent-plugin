@@ -107,7 +107,7 @@ test('QA-F14-03(b) · a hand-edit to the grounding section is detectable by the 
   // section is compared to a mutated copy of itself, which is exactly what that CI arm does with
   // the section it extracts from its checkout.
   const expected = renderGroundingSection(SHIPPED);
-  const tampered = expected.replace('a preview is what they are asking for', 'a preview is what they want');
+  const tampered = expected.replace('a test link is what they are asking for', 'a test link is what they want');
   assert.notEqual(tampered, expected);
   assert.ok(tampered.includes(BEGIN_MARKER) && tampered.includes(END_MARKER));
 });
@@ -165,7 +165,7 @@ test('both renderers carry every section body from the source verbatim', () => {
     assert.ok(grounding.includes(`### ${heading}`), `grounding carries "${heading}"`);
     assert.ok(skill.includes(`### ${heading}`), `skill body carries "${heading}"`);
   }
-  const sentence = 'Nothing other than the person saying';
+  const sentence = 'A demo that appeared to go well';
   assert.ok(grounding.includes(sentence) && skill.includes(sentence));
 });
 

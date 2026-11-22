@@ -29,7 +29,7 @@ test('QA-F14-G2(a) · a tag containing the section byte-for-byte PROCEEDS', () =
 });
 
 test('QA-F14-G2(b) · a tag with a DIFFERENT rendering REFUSES, naming tag and byte offset', () => {
-  const drifted = EXPECTED.replace('a preview is what they are asking for', 'a preview is what they want');
+  const drifted = EXPECTED.replace('a test link is what they are asking for', 'a test link is what they want');
   assert.notEqual(drifted, EXPECTED);
 
   const result = evaluateGate({ fetched: agentsMd(drifted), expected: EXPECTED });
@@ -110,7 +110,7 @@ test('QA-F14-G2(e) · the assertion is against the TAG, not the template\'s main
 test('QA-F14-G2 · every non-proceed outcome is a REFUSAL — there is no third state', () => {
   const cases = [
     { fetched: agentsMd(EXPECTED), expected: EXPECTED },
-    { fetched: agentsMd(EXPECTED.replace('preview', 'pre-view')), expected: EXPECTED },
+    { fetched: agentsMd(EXPECTED.replace('test link', 'test-link-x')), expected: EXPECTED },
     { fetched: 'nothing', expected: EXPECTED },
     { error: 'boom', expected: EXPECTED },
     { fetched: undefined, expected: EXPECTED },

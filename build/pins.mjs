@@ -10,7 +10,11 @@
 // facts arrive from that one answer, and a procedure that will not name the verb produces an
 // agent guessing at one. B-F3-8's enforceable half is verbs, so naming it is the half f14
 // accepted; naming a flag, an exit code, or an output shape remains the half it refused.
-export const PINNED_PLUGIN_VERBS = Object.freeze(['preview', 'outdated']);
+//
+// `test-link` is the third, added by retire-laptop-tunnel (auro#612). `preview` is retired from
+// the platform but stays listed: the ids and verbs are append-only, and an installed copy may
+// still carry the word. recognition.md no longer tells an agent to run it.
+export const PINNED_PLUGIN_VERBS = Object.freeze(['preview', 'outdated', 'test-link']);
 
 // QA-F14-G3: the ids are APPEND-ONLY, exactly as B-F3-8 treats verbs. An installed package
 // resolves against the id, not the label, so a rename orphans a copy we cannot reach. Labels

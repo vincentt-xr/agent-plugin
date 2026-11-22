@@ -486,8 +486,8 @@ test('QA-F14-04 · every label is <= 5 words and names no command', () => {
 
 // —— the verb pin ——————————————————————————————————————————————————————————————
 
-test('PINNED_PLUGIN_VERBS is the two pinned verbs, and the arm reads the pin rather than a copy', () => {
-  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview', 'outdated']);
+test('PINNED_PLUGIN_VERBS is the three pinned verbs, and the arm reads the pin rather than a copy', () => {
+  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview', 'outdated', 'test-link']);
 
   // Each pinned verb passes; anything else fails. Asserted through the lint so the pin and the
   // arm cannot drift.
