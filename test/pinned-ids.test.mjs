@@ -124,7 +124,7 @@ test('the verb pin is frozen for the same reason', () => {
   // `outdated` was appended by f17. The upgrade moment cannot defer its verb the way the other
   // moments defer theirs: every fact the procedure uses arrives from that one answer, so a
   // procedure refusing to name it produces an agent guessing at a verb instead.
-  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview', 'outdated']);
+  assert.deepEqual([...PINNED_PLUGIN_VERBS], ['preview', 'outdated', 'test-link']);
   assert.ok(Object.isFrozen(PINNED_PLUGIN_VERBS));
   assert.equal(PINNED_PLUGIN_VERBS[0], 'preview', 'append-only, and `preview` stays first');
 });

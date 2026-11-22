@@ -49,13 +49,16 @@ is the one who resolves that, not an assumption about which they meant.
 ### Showing it on a phone
 
 When the person asks to see it, try it, test it on a device, show a client, or get it on their
-phone, a preview is what they are asking for. A preview is what makes the work reachable at an
-address a phone can open, and the project's agent contract names the command. A preview produces
-two addresses, and only one of them belongs in the reply: the project's page in the console,
-which carries the phone link, the code that scans to it, and the view of the device. The other is
-already on that page, so a reply carrying both hands the person a choice at the moment they want
-an address rather than a decision. That one address belongs in the reply as soon as it exists,
-because the person is waiting to open it, and it is written there plainly rather than as
+phone, a test link is what they are asking for. A test link is one frozen copy of the work held
+at an address a phone can open, and `vincentt test-link` is the command that makes one. It
+leaves nothing running on this machine, so the person can close the laptop and the link still
+opens. The copy lasts seven days or a hundred views, whichever comes first, on every plan, it
+can carry a passcode, the person can end it at any time from the console, and it never follows
+later saves. A project the platform already hosts has a page in the console instead, which
+carries the phone link, the code that scans to it, and the view of the device, and that page is
+the other way to hand the work over. Only one address belongs in the reply, because the person
+asking wants an address rather than a decision between two. It belongs there as soon as it
+exists, because the person is waiting to open it, and it is written there plainly rather than as
 something to copy, so that opening it is one gesture. Where it opens is the machine the person
 is reading on, not the phone: the page is what carries the phone across, by a code the phone
 scans. A reply that sends that address to a phone describes the wrong screen, and the person
@@ -63,18 +66,16 @@ holding the phone is the one who finds out.
 
 ### Finishing
 
-When the person says they are done, finished, or asks to stop or close the preview, the preview
-stops. That request is the only thing that ends one, in those words or plainly equivalent ones. A quiet
-conversation is not a request. A passing test is not a request. A successful publish is not a
-request. A demo that appeared to go well is not a request. Nothing other than the person saying
-so ends a preview, because someone may still be holding a phone that goes dark when it does.
+When the person says they are done or finished, the work stops there. Nothing on this machine is
+holding a phone open, so there is nothing to end and no command to run for it. A test link ends
+by itself, or when the person ends it from the console. A quiet conversation is not a reason to
+make another link. A passing test is not. A successful publish is not. A demo that appeared to
+go well is not. The person is the one who asks for a new link, and a link someone was already
+given is not replaced on a guess that it has stopped working.
 
-The same rule holds in reverse, for a preview that ends without being asked to stop here. A
-preview the person ended somewhere else is a decision they already made, and the command that
-was holding it says on its way out that it has ended and what ended it. That is a thing to
-report, not a thing to undo: starting a replacement overrides the decision, and the address
-everyone was given stops being the address. Nothing about an ended preview asks for a new one,
-and the person is the one who asks.
+A new save needs a new link, because a link never follows later saves. Making one changes the
+address everyone was given, so the person is the one who asks for it. If the person says a link
+no longer opens, that is a thing to report as they said it.
 
 ### Bringing things up to date
 
