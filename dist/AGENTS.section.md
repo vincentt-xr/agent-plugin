@@ -51,10 +51,12 @@ is the one who resolves that, not an assumption about which they meant.
 ### Showing it on a phone
 
 When the person asks to see it, try it, test it on a device, show a client, or get it on their
-phone, a test link is what they are asking for. A test link is the built work held at an address a
-phone can open, and `vincentt test-link` is the command that makes one. It builds in the project
-folder and leaves nothing running on this machine, so the person can close the laptop and the
-link still opens. A project the platform already hosts has a page in the console instead, which
+phone, a test link is what they are asking for. A test link is one frozen copy of the work held
+at an address a phone can open, and `vincentt test-link` is the command that makes one. It
+leaves nothing running on this machine, so the person can close the laptop and the link still
+opens. The copy lasts seven days or a hundred views, whichever comes first, on every plan, it
+can carry a passcode, the person can end it at any time from the console, and it never follows
+later saves. A project the platform already hosts has a page in the console instead, which
 carries the phone link, the code that scans to it, and the view of the device, and that page is
 the other way to hand the work over. Only one address belongs in the reply, because the person
 asking wants an address rather than a decision between two. It belongs there as soon as it
@@ -67,13 +69,15 @@ holding the phone is the one who finds out.
 ### Finishing
 
 When the person says they are done or finished, the work stops there. Nothing on this machine is
-holding a phone open, so there is nothing to end and no command to run for it. A quiet
-conversation is not a reason to make another link. A passing test is not. A successful publish
-is not. A demo that appeared to go well is not. The person is the one who asks for a new link,
-and a link someone was already given is not replaced on a guess that it has stopped working.
+holding a phone open, so there is nothing to end and no command to run for it. A test link ends
+by itself, or when the person ends it from the console. A quiet conversation is not a reason to
+make another link. A passing test is not. A successful publish is not. A demo that appeared to
+go well is not. The person is the one who asks for a new link, and a link someone was already
+given is not replaced on a guess that it has stopped working.
 
-If the person says a link no longer opens, that is a thing to report as they said it. Making
-another link changes the address everyone was given, and the person is the one who asks for it.
+A new save needs a new link, because a link never follows later saves. Making one changes the
+address everyone was given, so the person is the one who asks for it. If the person says a link
+no longer opens, that is a thing to report as they said it.
 
 ### Bringing things up to date
 

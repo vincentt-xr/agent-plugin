@@ -165,7 +165,7 @@ test('both renderers carry every section body from the source verbatim', () => {
     assert.ok(grounding.includes(`### ${heading}`), `grounding carries "${heading}"`);
     assert.ok(skill.includes(`### ${heading}`), `skill body carries "${heading}"`);
   }
-  const sentence = 'A demo that appeared to go well';
+  const sentence = 'A passing test is not.';
   assert.ok(grounding.includes(sentence) && skill.includes(sentence));
 });
 
